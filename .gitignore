@@ -1,6 +1,7 @@
 # Object files
 *.o
 *.ko
+obj/
 
 # Libraries
 *.lib
@@ -16,3 +17,14 @@
 *.exe
 *.out
 *.app
+
+# uVision file types
+*.lst
+*.dep
+*.plg
+*.uvgui.*
+*.uvopt
+
+# Other file types
+*.bak
+*.map
