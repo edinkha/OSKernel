@@ -24,7 +24,7 @@ obj/
 *.plg
 *.uvgui.*
 *.uvopt
+*.map
 
 # Other file types
 *.bak
-*.map
