@@ -48,6 +48,7 @@ void memory_init(void)
 {
 	U8 *p_end = (U8 *)&Image$$RW_IRAM1$$ZI$$Limit;
 	int i;
+	MEM_BLOCK* firstBlockEver;
   
 	/* 4 bytes padding */
 	p_end += 4;
@@ -72,7 +73,11 @@ void memory_init(void)
 	}
   
 	/* allocate memory for heap, not implemented yet*/
-  
+	
+	p_end += USR_SZ_MEM_BLOCK;
+#ifdef DEBUG_0
+	printf("p_end = 0x%x \n", p_end);
+#endif
 }
 
 /**
@@ -102,12 +107,12 @@ void *k_request_memory_block(void) {
 	printf("k_request_memory_block: entering...\n");
 #endif /* ! DEBUG_0 */
 	//atomic(true);
-	mem_block *block = next_free_block();
+	/*mem_block *block = next_free_block();
 	while (block == NULL)
 	{
 		release_processor();
 		block = next_free_block();
-	}
+	}*/
 	//update heap
 	return (void *) NULL;
 }

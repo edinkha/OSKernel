@@ -16,7 +16,7 @@
 #define NULL 0
 #define NUM_TEST_PROCS 2
 
-#define USR_SZ_HEAP_BLOCK 0x80		 /* heap block size is 128B     */
+#define USR_SZ_MEM_BLOCK 0x80		 /* heap memory block size is 128B     */
 
 #ifdef DEBUG_0
 #define USR_SZ_STACK 0x200         /* user proc stack size 512B   */
@@ -48,7 +48,7 @@ typedef enum {
 */
 typedef struct pcb 
 { 
-	//struct pcb *mp_next;  /* next pcb, not used in this example */  
+	struct pcb *mp_next;  // next pcb
 	U32 *mp_sp;		/* stack pointer of the process */
 	U32 m_pid;		/* process id */
 	PROC_STATE_E m_state;   /* state of the process */      

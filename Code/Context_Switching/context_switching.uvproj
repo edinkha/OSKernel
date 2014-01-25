@@ -501,6 +501,31 @@
               <FileType>5</FileType>
               <FilePath>.\src\usr_proc.h</FilePath>
             </File>
+            <File>
+              <FileName>forward_list.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\forward_list.h</FilePath>
+            </File>
+            <File>
+              <FileName>queue.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\queue.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Data Structures</GroupName>
+          <Files>
+            <File>
+              <FileName>forward_list.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\forward_list.c</FilePath>
+            </File>
+            <File>
+              <FileName>queue.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\queue.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
