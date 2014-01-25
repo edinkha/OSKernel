@@ -1,10 +1,9 @@
 #ifndef DEBUG_0
-//Disable assertions
-#define NDEBUG
+#define NDEBUG //Disable assertions
 #endif
 
 #include <assert.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include "queue.h"
 
 
