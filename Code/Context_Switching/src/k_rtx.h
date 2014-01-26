@@ -8,6 +8,9 @@
 #ifndef K_RTX_H_
 #define K_RTX_H_
 
+#include "queue.h"
+#include "priority_queue.h"
+
 /*----- Definitations -----*/
 
 #define RTX_ERR -1
@@ -51,6 +54,7 @@ typedef struct pcb
 	struct pcb *mp_next;  // next pcb
 	U32 *mp_sp;		/* stack pointer of the process */
 	U32 m_pid;		/* process id */
+	U32 m_priority;
 	PROC_STATE_E m_state;   /* state of the process */      
 } PCB;
 
@@ -68,5 +72,8 @@ typedef struct mem_block
 	U32 *next_block;
 	//some memory
 } MEM_BLOCK;
+
+extern Queue *blocked_q;
+extern PriorityQueue *ready_q;
 
 #endif // ! K_RTX_H_

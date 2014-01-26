@@ -17,7 +17,6 @@
 
 #include "queue.h"
 
-// TODO: Shouldn't this be 5? (I.e. priorities 0, 1, 2, 3, and 4)
 #define NUM_PRIORITIES 4
 
 typedef struct priority_queue {

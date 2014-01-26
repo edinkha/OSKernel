@@ -16,6 +16,8 @@ U32 *gp_stack; /* The last allocated stack low address. 8 bytes aligned */
                /* The first stack starts at the RAM high address */
 	       /* stack grows down. Fully decremental stack */
 ForwardList* heap; // Pointer to the heap
+PriorityQueue* ready_q;
+Queue* blocked_q;
 
 /**
  * @brief: Initialize RAM as follows:
@@ -72,6 +74,13 @@ void memory_init(void)
 	if ((U32)gp_stack & 0x04) { /* 8 bytes alignment */
 		--gp_stack; 
 	}
+	
+	/* allocate memory for ready and blocked queue */
+	ready_q = (PriorityQueue *)p_end;
+	p_end += sizeof(PriorityQueue);
+	
+	blocked_q = (Queue *)p_end;
+	p_end += sizeof(Queue);
   
 	/* allocate memory for heap, not implemented yet*/
 	
@@ -125,6 +134,7 @@ void *k_request_memory_block(void) {
 	//atomic(on);
 	while (empty(heap))
 	{
+		
 		//put PCB on blocked resource queue
 		//set process state to blocked on resource
 		//release_processor();

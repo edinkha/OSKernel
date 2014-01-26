@@ -26,8 +26,7 @@
 /* ----- Global Variables ----- */
 PCB **gp_pcbs;                  /* array of pcbs */
 PCB *gp_current_process = NULL; /* always point to the current RUN process */
-Queue *ready_q;
-Queue *blocked_q;
+
 
 /* process initialization table */
 PROC_INIT g_proc_table[NUM_TEST_PROCS];
@@ -46,6 +45,7 @@ void process_init()
 	set_test_procs();
 	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
 		g_proc_table[i].m_pid = g_test_procs[i].m_pid;
+		g_proc_table[i].m_priority = g_test_procs[i].m_priority;
 		g_proc_table[i].m_stack_size = g_test_procs[i].m_stack_size;
 		g_proc_table[i].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
@@ -54,6 +54,7 @@ void process_init()
 	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
 		int j;
 		(gp_pcbs[i])->m_pid = (g_proc_table[i]).m_pid;
+		(gp_pcbs[i])->m_priority = (g_proc_table[i]).m_priority;
 		(gp_pcbs[i])->m_state = NEW;
 		
 		sp = alloc_stack((g_proc_table[i]).m_stack_size);
@@ -63,6 +64,15 @@ void process_init()
 			*(--sp) = 0x0;
 		}
 		(gp_pcbs[i])->mp_sp = sp;
+	}
+	
+	/* put each process in the ready queue (note: not using priorities yet) */
+	for (i = 0; i < NUM_TEST_PROCS; i++) {
+		PCB* process = gp_pcbs[i];
+
+		// Set process state to ready and push it to the priority queue
+		(process)->m_state = RDY;
+		push(ready_q, (QNode *)process, process->m_priority);
 	}
 }
 
@@ -103,15 +113,15 @@ int process_switch(PCB *p_pcb_old)
 	
 	state = gp_current_process->m_state;
 
-	if (state == NEW) {
-		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-			p_pcb_old->m_state = RDY;
-			p_pcb_old->mp_sp = (U32 *) __get_MSP();
-		}
-		gp_current_process->m_state = RUN;
-		__set_MSP((U32) gp_current_process->mp_sp);
-		__rte();  // pop exception stack frame from the stack for a new processes
-	} 
+// 	if (state == NEW) {
+// 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
+// 			p_pcb_old->m_state = RDY;
+// 			p_pcb_old->mp_sp = (U32 *) __get_MSP();
+// 		}
+// 		gp_current_process->m_state = RUN;
+// 		__set_MSP((U32) gp_current_process->mp_sp);
+// 		__rte();  // pop exception stack frame from the stack for a new processes
+// 	} 
 	
 	/* The following will only execute if the if block above is FALSE */
 
