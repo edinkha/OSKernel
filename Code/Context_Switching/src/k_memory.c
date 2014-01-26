@@ -15,6 +15,7 @@
 U32 *gp_stack; /* The last allocated stack low address. 8 bytes aligned */
                /* The first stack starts at the RAM high address */
 	       /* stack grows down. Fully decremental stack */
+ForwardList* heap; // Pointer to the heap
 
 /**
  * @brief: Initialize RAM as follows:
@@ -27,7 +28,7 @@ U32 *gp_stack; /* The last allocated stack low address. 8 bytes aligned */
           |                           |
           |        HEAP               |
           |                           |
-          |---------------------------|
+          |---------------------------|<-- p_end (before heap alloc)
           |        PCB 2              |
           |---------------------------|
           |        PCB 1              |
@@ -48,7 +49,7 @@ void memory_init(void)
 {
 	U8 *p_end = (U8 *)&Image$$RW_IRAM1$$ZI$$Limit;
 	int i;
-	MEM_BLOCK* firstBlockEver;
+	MEM_BLOCK* heap_block;
   
 	/* 4 bytes padding */
 	p_end += 4;
@@ -74,10 +75,25 @@ void memory_init(void)
   
 	/* allocate memory for heap, not implemented yet*/
 	
-	p_end += USR_SZ_MEM_BLOCK;
 #ifdef DEBUG_0
 	printf("p_end = 0x%x \n", p_end);
 #endif
+	
+	// Assign memory for the heap struct
+	heap = (ForwardList *)p_end; 
+	p_end += sizeof(ForwardList);
+	
+	// Build the heap
+	for (i = 0; i < NUM_HEAP_BLOCKS; i++) {
+		heap_block = (MEM_BLOCK *)p_end;
+		push_front(heap, (ListNode*)heap_block);
+		p_end += USR_SZ_MEM_BLOCK;
+	}
+	
+#ifdef DEBUG_0
+	printf("p_end = 0x%x \n", p_end);
+#endif
+	
 }
 
 /**
