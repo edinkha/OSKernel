@@ -14,7 +14,7 @@ bool q_empty(Queue* queue)
 	return queue->first == NULL;
 }
 
-void enqueue(Queue* queue, QueueNode* node)
+void enqueue(Queue* queue, QNode* node)
 {
 	assert(queue != NULL);
 
@@ -27,9 +27,9 @@ void enqueue(Queue* queue, QueueNode* node)
 	queue->last = node;
 }
 
-QueueNode* dequeue(Queue* queue)
+QNode* dequeue(Queue* queue)
 {
-	QueueNode* firstNode;
+	QNode* firstNode;
 	assert(queue != NULL);
 
 	firstNode = queue->first;
