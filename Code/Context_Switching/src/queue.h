@@ -1,7 +1,7 @@
 /**
  * @file:   queue.h
  * @brief:  Queue header file
- * @auther: Nathan Woltman
+ * @author: Nathan Woltman
  * @date:   2014/01/25
  */
 

@@ -1,7 +1,7 @@
 /**
  * @file:   priority_queue.c
  * @brief:  Priority Queue C file
- * @auther: Nathan Woltman
+ * @author: Nathan Woltman
  * @date:   2014/01/26
  */
 

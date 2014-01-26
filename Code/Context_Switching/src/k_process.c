@@ -17,6 +17,7 @@
 #include <system_LPC17xx.h>
 #include "uart_polling.h"
 #include "k_process.h"
+#include "queue.h"
 
 #ifdef DEBUG_0
 #include "printf.h"
@@ -25,6 +26,8 @@
 /* ----- Global Variables ----- */
 PCB **gp_pcbs;                  /* array of pcbs */
 PCB *gp_current_process = NULL; /* always point to the current RUN process */
+Queue *ready_q;
+Queue *blocked_q;
 
 /* process initialization table */
 PROC_INIT g_proc_table[NUM_TEST_PROCS];

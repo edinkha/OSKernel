@@ -1,7 +1,7 @@
 /**
  * @file:   queue.c
  * @brief:  Queue C file
- * @auther: Nathan Woltman
+ * @author: Nathan Woltman
  * @date:   2014/01/25
  */
 

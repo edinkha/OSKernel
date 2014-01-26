@@ -1,7 +1,7 @@
 /**
  * @file:   forward_list.c
  * @brief:  Forward List C file
- * @auther: Nathan Woltman
+ * @author: Nathan Woltman
  * @date:   2014/01/25
  */
 

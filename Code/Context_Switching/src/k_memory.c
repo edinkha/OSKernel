@@ -28,7 +28,7 @@ ForwardList* heap; // Pointer to the heap
           |                           |
           |        HEAP               |
           |                           |
-          |---------------------------|<-- p_end (before heap alloc)
+          |---------------------------|<--- p_end (before heap alloc)
           |        PCB 2              |
           |---------------------------|
           |        PCB 1              |
@@ -122,20 +122,30 @@ void *k_request_memory_block(void) {
 #ifdef DEBUG_0 
 	printf("k_request_memory_block: entering...\n");
 #endif /* ! DEBUG_0 */
-	//atomic(true);
-	/*mem_block *block = next_free_block();
-	while (block == NULL)
+	//atomic(on);
+	while (empty(heap))
 	{
-		release_processor();
-		block = next_free_block();
-	}*/
-	//update heap
-	return (void *) NULL;
+		//put PCB on blocked resource queue
+		//set process state to blocked on resource
+		//release_processor();
+	}
+	//atomic(off)
+	return (void *) pop_front(heap);
 }
 
 int k_release_memory_block(void *p_mem_blk) {
 #ifdef DEBUG_0 
 	printf("k_release_memory_block: releasing block @ 0x%x\n", p_mem_blk);
 #endif /* ! DEBUG_0 */
+	//atomic(on)
+	if (p_mem_blk == NULL) {
+		return RTX_ERR;
+	}
+	push_front(heap, p_mem_blk);
+// 	if ( blocked on resource q not empty ) {
+// 		handle_process_ready ( pop ( blocked resource q ) ) ;
+// 	}	
+	//atomic(off)
+	
 	return RTX_OK;
 }
