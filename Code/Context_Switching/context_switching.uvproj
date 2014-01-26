@@ -511,6 +511,11 @@
               <FileType>5</FileType>
               <FilePath>.\src\queue.h</FilePath>
             </File>
+            <File>
+              <FileName>priority_queue.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\priority_queue.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -525,6 +530,11 @@
               <FileName>queue.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\queue.c</FilePath>
+            </File>
+            <File>
+              <FileName>priority_queue.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\priority_queue.c</FilePath>
             </File>
           </Files>
         </Group>

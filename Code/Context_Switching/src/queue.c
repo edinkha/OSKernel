@@ -1,3 +1,10 @@
+/**
+ * @file:   queue.c
+ * @brief:  Queue C file
+ * @auther: Nathan Woltman
+ * @date:   2014/01/25
+ */
+
 #ifndef DEBUG_0
 #define NDEBUG //Disable assertions
 #endif
@@ -10,7 +17,6 @@
 int q_empty(Queue* queue)
 {
 	assert(queue != NULL);
-	
 	return queue->first == NULL;
 }
 

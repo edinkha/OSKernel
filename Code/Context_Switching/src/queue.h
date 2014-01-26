@@ -1,3 +1,10 @@
+/**
+ * @file:   queue.h
+ * @brief:  Queue header file
+ * @auther: Nathan Woltman
+ * @date:   2014/01/25
+ */
+
 #ifndef QUEUE_H
 #define QUEUE_H
 
