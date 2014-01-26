@@ -7,10 +7,10 @@
 #include "forward_list.h"
 
 
-bool empty(ForwardList* list)
+int empty(ForwardList* list)
 {
 	assert(list != NULL);
-
+	
 	return list->front == NULL;
 }
 
@@ -18,7 +18,7 @@ ListNode* pop_front(ForwardList* list)
 {
 	ListNode* frontNode;
 	assert(list != NULL);
-
+	
 	frontNode = list->front;
 	//If the front node is not null, set the next node to the front node
 	if (frontNode != NULL) {
@@ -37,7 +37,7 @@ void push_front(ForwardList* list, ListNode* node)
 void remove(ForwardList* list, ListNode* node)
 {
 	ListNode* iterator;
-
+	
 	//If the list is empty, there is nothing to remove, so simply return
 	if (empty(list)) {
 		return;
