@@ -20,7 +20,7 @@
 #define NUM_PRIORITIES 4
 
 typedef struct priority_queue {
-	Queue* queues[NUM_PRIORITIES];
+	Queue queues[NUM_PRIORITIES];
 } PriorityQueue;
 
 /**

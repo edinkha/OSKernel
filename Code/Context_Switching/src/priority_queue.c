@@ -17,7 +17,7 @@
 QNode* pop(PriorityQueue* pqueue)
 {
 	int i;
-	Queue* queue;
+	Queue queue;
 	
 	assert(pqueue != NULL);
 	
@@ -25,8 +25,8 @@ QNode* pop(PriorityQueue* pqueue)
 	//and dequeue the first non-empty queue
 	for (i = 0; i < NUM_PRIORITIES; i++) {
 		queue = pqueue->queues[i];
-		if (!q_empty(queue)) {
-			return dequeue(queue);
+		if (!q_empty(&queue)) {
+			return dequeue(&queue);
 		}
 	}
 	//All queues were empty so return a null pointer
@@ -38,5 +38,5 @@ void push(PriorityQueue* pqueue, QNode* node, int priority)
 	assert(pqueue != NULL && priority < NUM_PRIORITIES);
 	
 	//Simply add the node to the queue with the specified priority
-	enqueue(pqueue->queues[priority], node);
+	enqueue(&(pqueue->queues[priority]), node);
 }

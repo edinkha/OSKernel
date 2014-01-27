@@ -71,7 +71,7 @@ void process_init()
 		PCB* process = gp_pcbs[i];
 
 		// Set process state to ready and push it to the priority queue
-		(process)->m_state = RDY;
+		//(process)->m_state = RDY;
 		push(ready_q, (QNode *)process, process->m_priority);
 	}
 }
@@ -85,18 +85,20 @@ void process_init()
 
 PCB *scheduler(void)
 {
-	if (gp_current_process == NULL) {
-		gp_current_process = gp_pcbs[0]; 
-		return gp_pcbs[0];
-	}
+// 	if (gp_current_process == NULL) {
+// 		gp_current_process = gp_pcbs[0]; 
+// 		return gp_pcbs[0];
+// 	}
 
-	if ( gp_current_process == gp_pcbs[0] ) {
-		return gp_pcbs[1];
-	} else if ( gp_current_process == gp_pcbs[1] ) {
-		return gp_pcbs[0];
-	} else {
-		return NULL;
-	}
+// 	if ( gp_current_process == gp_pcbs[0] ) {
+// 		return gp_pcbs[1];
+// 	} else if ( gp_current_process == gp_pcbs[1] ) {
+// 		return gp_pcbs[0];
+// 	} else {
+// 		return NULL;
+// 	}
+	
+ 	return (PCB *)pop(ready_q);
 }
 
 /*@brief: switch out old pcb (p_pcb_old), run the new pcb (gp_current_process)
@@ -113,15 +115,15 @@ int process_switch(PCB *p_pcb_old)
 	
 	state = gp_current_process->m_state;
 
-// 	if (state == NEW) {
-// 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-// 			p_pcb_old->m_state = RDY;
-// 			p_pcb_old->mp_sp = (U32 *) __get_MSP();
-// 		}
-// 		gp_current_process->m_state = RUN;
-// 		__set_MSP((U32) gp_current_process->mp_sp);
-// 		__rte();  // pop exception stack frame from the stack for a new processes
-// 	} 
+	if (state == NEW) {
+		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
+			p_pcb_old->m_state = RDY;
+			p_pcb_old->mp_sp = (U32 *) __get_MSP();
+		}
+		gp_current_process->m_state = RUN;
+		__set_MSP((U32) gp_current_process->mp_sp);
+		__rte();  // pop exception stack frame from the stack for a new processes
+	} 
 	
 	/* The following will only execute if the if block above is FALSE */
 
@@ -136,6 +138,7 @@ int process_switch(PCB *p_pcb_old)
 			return RTX_ERR;
 		} 
 	}
+	
 	return RTX_OK;
 }
 /**
