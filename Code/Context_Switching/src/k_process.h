@@ -26,6 +26,8 @@ extern U32 *alloc_stack(U32 size_b);   /* allocate stack for a process */
 extern void __rte(void);               /* pop exception stack frame */
 extern void set_test_procs(void);      /* test process initial set up */
 
+PCB* get_proc_by_pid(int pid);			/* returns a pointer to the PCB with the given PID */
+
 int get_proc_priority(int pid);
 int set_proc_priority(int pid, int priority);
 

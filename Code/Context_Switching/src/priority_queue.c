@@ -17,16 +17,16 @@
 QNode* pop(PriorityQueue* pqueue)
 {
 	int i;
-	Queue queue;
+	Queue* queue;
 	
 	assert(pqueue != NULL);
 	
 	//Loop through the queues by priority (0 is highest)
 	//and dequeue the first non-empty queue
 	for (i = 0; i < NUM_PRIORITIES; i++) {
-		queue = pqueue->queues[i];
-		if (!q_empty(&queue)) {
-			return dequeue(&queue);
+		queue = &pqueue->queues[i];
+		if (!q_empty(queue)) {
+			return dequeue(queue);
 		}
 	}
 	//All queues were empty so return a null pointer

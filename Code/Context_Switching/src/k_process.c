@@ -163,3 +163,29 @@ int k_release_processor(void)
 	process_switch(p_pcb_old);
 	return RTX_OK;
 }
+
+PCB* get_proc_by_pid(int pid)
+{
+	int i;
+	for (i = 0; i < NUM_TEST_PROCS; i++) {
+		if (gp_pcbs[i]->m_pid == pid) {
+			return gp_pcbs[i];
+		}
+	}
+	return NULL; //Error
+}
+
+int get_proc_priority(int pid)
+{
+	return get_proc_by_pid(pid)->m_priority;
+}
+
+int set_proc_priority(int pid, int priority)
+{
+	PCB* pcb = get_proc_by_pid(pid);
+	if (pcb == NULL) {
+		return RTX_ERR;
+	}
+	pcb->m_priority = priority;
+	return RTX_OK;
+}

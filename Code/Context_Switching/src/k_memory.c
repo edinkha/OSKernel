@@ -82,8 +82,7 @@ void memory_init(void)
 	blocked_q = (Queue *)p_end;
 	p_end += sizeof(Queue);
   
-	/* allocate memory for heap, not implemented yet*/
-	
+	/* allocate memory for the heap */
 #ifdef DEBUG_0
 	printf("p_end = 0x%x \n", p_end);
 #endif
