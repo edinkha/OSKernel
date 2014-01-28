@@ -135,6 +135,9 @@ void *k_request_memory_block(void) {
 #endif /* ! DEBUG_0 */
 	while (empty(heap))
 	{
+		#ifdef DEBUG_0 
+			printf("process blocked \n");
+		#endif /* ! DEBUG_0 */
 		gp_current_process->m_state = BLOCKED;
 		enqueue(blocked_q, (QNode *) gp_current_process);
 		k_release_processor();
@@ -154,6 +157,9 @@ int k_release_memory_block(void *p_mem_blk) {
 	if (!q_empty(blocked_q)) {
 		to_unblock = dequeue(blocked_q);
 		((PCB *)to_unblock)->m_state = RDY;
+		#ifdef DEBUG_0 
+	printf("unblocking process ID %x\n", ((PCB *)to_unblock)->m_pid);
+#endif /* ! DEBUG_0 */
 		push(ready_q, to_unblock, ((PCB *)to_unblock)->m_priority);
 		k_release_processor();
 	}	

@@ -31,6 +31,7 @@ void enqueue(Queue* queue, QNode* node)
 		queue->last->next = node;
 	}
 	queue->last = node;
+	node->next = NULL;
 }
 
 QNode* dequeue(Queue* queue)
@@ -43,5 +44,10 @@ QNode* dequeue(Queue* queue)
 	if (firstNode != NULL) {
 		queue->first = firstNode->next;
 	}
+	
+	if (queue->first == NULL) {
+		queue->last = NULL;
+	}
+	
 	return firstNode;
 }

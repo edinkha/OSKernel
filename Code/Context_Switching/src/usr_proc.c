@@ -29,6 +29,8 @@ void set_test_procs() {
 	g_test_procs[0].mpf_start_pc = &proc1;
 	g_test_procs[1].mpf_start_pc = &proc2;
 	g_test_procs[2].mpf_start_pc = &proc3;
+	g_test_procs[3].mpf_start_pc = &proc4;
+	g_test_procs[4].mpf_start_pc = &proc5;
 }
 
 
@@ -78,61 +80,59 @@ void proc3(void)
 {
 	void* memblock1 = NULL;
 	void* memblock2 = NULL;
-	void* memblock3 = NULL;
-	void* memblock4 = NULL;
-	int i = 0;
+
 	int ret_val = 20;
 	while ( 1) {
-		if ( i != 0 && i%5 == 0 ) {
-			uart0_put_string("\n\r");
-			ret_val = release_processor();
+
 #ifdef DEBUG_0
-			printf("proc3: ret_val=%d\n", ret_val);
+			printf("proc3 requesting memory\n");
 #endif /* DEBUG_0 */
-		}
 		memblock1 = request_memory_block();
 		memblock2 = request_memory_block();
-		memblock3 = request_memory_block();
-		memblock4 = request_memory_block();
+		ret_val = release_processor();
+#ifdef DEBUG_0
+			printf("proc3 releasing memory\n");
+#endif /* DEBUG_0 */
 		release_memory_block(memblock1);
 		release_memory_block(memblock2);
-		release_memory_block(memblock3);
-		release_memory_block(memblock4);
-		i++;
 	}
 }
 
 void proc4(void)
 {
-	int i = 0;
+	void* memblock1 = NULL;
+
 	int ret_val = 20;
 	while ( 1) {
-		if ( i != 0 && i%5 == 0 ) {
-			uart0_put_string("\n\r");
-			ret_val = release_processor();
+
 #ifdef DEBUG_0
-			printf("proc2: ret_val=%d\n", ret_val);
+			printf("proc4 requesting memory\n");
 #endif /* DEBUG_0 */
-		}
-		uart0_put_char('0' + i%10);
-		i++;
+		memblock1 = request_memory_block();
+		ret_val = release_processor();
+#ifdef DEBUG_0
+			printf("proc4 releasing memory\n");
+#endif /* DEBUG_0 */
+		release_memory_block(memblock1);
 	}
 }
 
 void proc5(void)
 {
-	int i = 0;
+	void* memblock1 = NULL;
+
 	int ret_val = 20;
 	while ( 1) {
-		if ( i != 0 && i%5 == 0 ) {
-			uart0_put_string("\n\r");
-			ret_val = release_processor();
+
 #ifdef DEBUG_0
-			printf("proc2: ret_val=%d\n", ret_val);
+			printf("proc5 requesting memory\n");
 #endif /* DEBUG_0 */
-		}
-		uart0_put_char('0' + i%10);
-		i++;
+		memblock1 = request_memory_block();
+		ret_val = release_processor();
+#ifdef DEBUG_0
+			printf("proc5 releasing memory\n");
+#endif /* DEBUG_0 */
+		release_memory_block(memblock1);
 	}
 }
 
