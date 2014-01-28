@@ -11,6 +11,9 @@
 #include "printf.h"
 #endif /* ! DEBUG_0 */
 
+// Add k_release_processor here
+extern int k_release_processor(void);
+
 /* ----- Global Variables ----- */
 U32 *gp_stack; /* The last allocated stack low address. 8 bytes aligned */
                /* The first stack starts at the RAM high address */
@@ -150,6 +153,7 @@ int k_release_memory_block(void *p_mem_blk) {
 	push_front(heap, p_mem_blk);
 	if (!q_empty(blocked_q)) {
 		to_unblock = dequeue(blocked_q);
+		((PCB *)to_unblock)->m_state = RDY;
 		push(ready_q, to_unblock, ((PCB *)to_unblock)->m_priority);
 		k_release_processor();
 	}	
