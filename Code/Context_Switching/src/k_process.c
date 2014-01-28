@@ -42,6 +42,12 @@ void process_init()
   
         /* fill out the initialization table */
 	set_test_procs();
+	// null process
+	g_test_procs[NUM_TEST_PROCS - 1].m_pid=(U32)(0);
+	g_test_procs[NUM_TEST_PROCS - 1].m_priority=4;
+	g_test_procs[NUM_TEST_PROCS - 1].m_stack_size=0x100;
+	g_test_procs[NUM_TEST_PROCS - 1].mpf_start_pc = &nullproc;
+	
 	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
 		g_proc_table[i].m_pid = g_test_procs[i].m_pid;
 		g_proc_table[i].m_priority = g_test_procs[i].m_priority;
@@ -177,15 +183,46 @@ PCB* get_proc_by_pid(int pid)
 
 int get_proc_priority(int pid)
 {
+	if (get_proc_by_pid(pid) == NULL) {
+		return RTX_ERR;
+	}
+	
 	return get_proc_by_pid(pid)->m_priority;
 }
 
 int set_proc_priority(int pid, int priority)
 {
-	PCB* pcb = get_proc_by_pid(pid);
+	PCB* pcb;
+	
+	if (priority < 0 || priority > 3) {
+		return RTX_ERR;
+	}
+	
+	pcb = get_proc_by_pid(pid);
 	if (pcb == NULL) {
 		return RTX_ERR;
 	}
-	pcb->m_priority = priority;
+	
+	if (pcb->m_priority == priority) {
+		return RTX_OK;
+	}
+	
+	switch(pcb->m_state) {
+		case NEW:
+		case RDY:
+			// DO STUFF.
+		case RUN:
+		case BLOCKED:
+			pcb->m_priority = priority;
+			break;
+	}
+	
 	return RTX_OK;
+}
+
+void nullproc(void)
+{
+	while(1) {
+		k_release_processor();
+	}
 }
