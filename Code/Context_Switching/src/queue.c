@@ -40,6 +40,8 @@ QNode* dequeue(Queue* queue)
 	
 	firstNode = queue->first;
 	//If the front node is not null, set the next node to the front node
+	// NOTE: This currently doesn't work with implementation of priority queue...
+	// "queue->first = " changes pointer of local variable, but not the queue in the priority queue
 	if (firstNode != NULL) {
 		queue->first = firstNode->next;
 	}

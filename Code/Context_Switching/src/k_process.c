@@ -27,7 +27,6 @@
 PCB **gp_pcbs;                  /* array of pcbs */
 PCB *gp_current_process = NULL; /* always point to the current RUN process */
 
-
 /* process initialization table */
 PROC_INIT g_proc_table[NUM_TEST_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
@@ -66,12 +65,11 @@ void process_init()
 		(gp_pcbs[i])->mp_sp = sp;
 	}
 	
-	/* put each process in the ready queue (note: not using priorities yet) */
-	for (i = 0; i < NUM_TEST_PROCS; i++) {
+	/* put each process (minus null process) in the ready queue */
+	for (i = 0; i < NUM_TEST_PROCS - 1; i++) {
 		PCB* process = gp_pcbs[i];
 
-		// Set process state to ready and push it to the priority queue
-		//(process)->m_state = RDY;
+		// Push each process to the priority queue
 		push(ready_q, (QNode *)process, process->m_priority);
 	}
 }
@@ -85,20 +83,14 @@ void process_init()
 
 PCB *scheduler(void)
 {
-// 	if (gp_current_process == NULL) {
-// 		gp_current_process = gp_pcbs[0]; 
-// 		return gp_pcbs[0];
-// 	}
-
-// 	if ( gp_current_process == gp_pcbs[0] ) {
-// 		return gp_pcbs[1];
-// 	} else if ( gp_current_process == gp_pcbs[1] ) {
-// 		return gp_pcbs[0];
-// 	} else {
-// 		return NULL;
-// 	}
+	PCB* next_pcb = (PCB *)pop(ready_q);
 	
- 	return (PCB *)pop(ready_q);
+	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
+	if (next_pcb == NULL) {
+		return gp_pcbs[NUM_TEST_PROCS - 1];
+	} else {
+		return next_pcb;
+	}
 }
 
 /*@brief: switch out old pcb (p_pcb_old), run the new pcb (gp_current_process)
@@ -119,6 +111,10 @@ int process_switch(PCB *p_pcb_old)
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
 			p_pcb_old->m_state = RDY;
 			p_pcb_old->mp_sp = (U32 *) __get_MSP();
+			// put the old process back in the ready queue if it's not the null process
+			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS - 1]) {
+				push(ready_q, (QNode *)p_pcb_old, p_pcb_old->m_priority);
+			}
 		}
 		gp_current_process->m_state = RUN;
 		__set_MSP((U32) gp_current_process->mp_sp);
@@ -129,10 +125,14 @@ int process_switch(PCB *p_pcb_old)
 
 	if (gp_current_process != p_pcb_old) {
 		if (state == RDY){ 		
-			p_pcb_old->m_state = RDY; 
+			p_pcb_old->m_state = RDY;
 			p_pcb_old->mp_sp = (U32 *) __get_MSP(); // save the old process's sp
+			// put the old process back in the ready queue if it's not the null process
+			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS - 1]) {
+				push(ready_q, (QNode *)p_pcb_old, p_pcb_old->m_priority);
+			}
 			gp_current_process->m_state = RUN;
-			__set_MSP((U32) gp_current_process->mp_sp); //switch to the new proc's stack    
+			__set_MSP((U32) gp_current_process->mp_sp); //switch to the new proc's stack  			
 		} else {
 			gp_current_process = p_pcb_old; // revert back to the old proc on error
 			return RTX_ERR;

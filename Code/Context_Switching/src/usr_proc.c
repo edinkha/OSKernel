@@ -19,14 +19,19 @@ PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
 void set_test_procs() {
 	int i;
-	for( i = 0; i < NUM_TEST_PROCS; i++ ) {
+	for( i = 0; i < NUM_TEST_PROCS - 1; i++ ) {
 		g_test_procs[i].m_pid=(U32)(i+1);
 		g_test_procs[i].m_priority=LOWEST;
 		g_test_procs[i].m_stack_size=0x100;
 	}
+	// null process
+	g_test_procs[NUM_TEST_PROCS - 1].m_pid=(U32)(0);
+	g_test_procs[NUM_TEST_PROCS - 1].m_priority=4;
+	g_test_procs[NUM_TEST_PROCS - 1].m_stack_size=0x100;
   
 	g_test_procs[0].mpf_start_pc = &proc1;
 	g_test_procs[1].mpf_start_pc = &proc2;
+	g_test_procs[NUM_TEST_PROCS - 1].mpf_start_pc = &nullproc;
 }
 
 
@@ -69,5 +74,12 @@ void proc2(void)
 		}
 		uart0_put_char('0' + i%10);
 		i++;
+	}
+}
+
+void nullproc(void)
+{
+	while(1) {
+		release_processor();
 	}
 }

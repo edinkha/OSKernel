@@ -17,7 +17,7 @@
 #define RTX_OK  0
 
 #define NULL 0
-#define NUM_TEST_PROCS 2
+#define NUM_TEST_PROCS 3
 
 #define USR_SZ_MEM_BLOCK 0x80		 /* heap memory block size is 128B     */
 
