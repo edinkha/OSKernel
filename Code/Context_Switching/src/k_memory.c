@@ -130,31 +130,29 @@ void *k_request_memory_block(void) {
 #ifdef DEBUG_0 
 	printf("k_request_memory_block: entering...\n");
 #endif /* ! DEBUG_0 */
-	//atomic(on);
 	while (empty(heap))
 	{
-		
-		//put PCB on blocked resource queue
-		//set process state to blocked on resource
-		//release_processor();
+		gp_current_process->m_state = BLOCKED;
+		enqueue(blocked_q, (QNode *) gp_current_process);
+		k_release_processor();
 	}
-	//atomic(off)
 	return (void *) pop_front(heap);
 }
 
 int k_release_memory_block(void *p_mem_blk) {
+	QNode* to_unblock;
 #ifdef DEBUG_0 
 	printf("k_release_memory_block: releasing block @ 0x%x\n", p_mem_blk);
 #endif /* ! DEBUG_0 */
-	//atomic(on)
 	if (p_mem_blk == NULL) {
 		return RTX_ERR;
 	}
 	push_front(heap, p_mem_blk);
-// 	if ( blocked on resource q not empty ) {
-// 		handle_process_ready ( pop ( blocked resource q ) ) ;
-// 	}	
-	//atomic(off)
+	if (!q_empty(blocked_q)) {
+		to_unblock = dequeue(blocked_q);
+		push(ready_q, to_unblock, ((PCB *)to_unblock)->m_priority);
+		k_release_processor();
+	}	
 	
 	return RTX_OK;
 }
