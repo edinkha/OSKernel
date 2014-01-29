@@ -55,6 +55,7 @@ void memory_init(void)
 	U8 *p_end = (U8 *)&Image$$RW_IRAM1$$ZI$$Limit;
 	int i;
 	MEM_BLOCK* heap_block;
+	U32* stack_end_addr;
   
 	/* 4 bytes padding */
 	p_end += 4;
@@ -94,10 +95,16 @@ void memory_init(void)
 	heap = (ForwardList *)p_end; 
 	p_end += sizeof(ForwardList);
 	
+	//Find the address of the end of the stack
+	//NUM_TEST_PROCS + 1 for the null process
+	//USR_SZ_STACK + 1 to take into account the 8-byte alignment
+	//-1 for extra padding
+	stack_end_addr = (U32 *)(RAM_END_ADDR - ((NUM_TEST_PROCS + 1) * (USR_SZ_STACK + 1)) - 1);
+	
 	// Build the heap
-	for (i = 0; i < NUM_HEAP_BLOCKS; i++) {
+	while (p_end + USR_SZ_MEM_BLOCK < (U8 *)stack_end_addr) {
 		heap_block = (MEM_BLOCK *)p_end;
-		push_front(heap, (ListNode*)heap_block);
+		push_front(heap, (ListNode *)heap_block);
 		p_end += USR_SZ_MEM_BLOCK;
 	}
 	
