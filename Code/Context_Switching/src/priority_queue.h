@@ -2,6 +2,7 @@
  * @file:   priority_queue.h
  * @brief:  Priority Queue header file
  * @author: Nathan Woltman
+ * @author: Justin Gagne
  * @date:   2014/01/26
  *
  * NOTE:
@@ -34,5 +35,12 @@ QNode* pop(PriorityQueue* pqueue);
  * @brief: Adds the input node to the end of the queue with the given priority
  */
 void push(PriorityQueue* pqueue, QNode* node, int priority);
+
+/**
+ * @brief: Gets node in queue by pid and removes the node from the queue
+ * @return: QNode point of the removed node
+ *          NULL if queue is empty or node not found
+ */
+QNode* remove(PriorityQueue* pqueue, int old_priority, void* pcb_address);
 
 #endif

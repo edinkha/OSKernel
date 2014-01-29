@@ -2,6 +2,7 @@
  * @file:   priority_queue.c
  * @brief:  Priority Queue C file
  * @author: Nathan Woltman
+ * @author: Justin Gagne
  * @date:   2014/01/26
  */
 
@@ -39,4 +40,21 @@ void push(PriorityQueue* pqueue, QNode* node, int priority)
 	
 	//Simply add the node to the queue with the specified priority
 	enqueue(&(pqueue->queues[priority]), node);
+}
+
+QNode* remove(PriorityQueue* pqueue, int old_priority, void* pcb_address)
+{
+	QNode* node;
+
+	assert(pqueue != NULL);
+	
+	// Assign the first node in the old priority queue's to node
+	node = (QNode*)pqueue->queues[old_priority].first;
+	
+	// loop through the queue until we reach the end or find the matching PCB
+	while(node != NULL && (void*)node != pcb_address) {
+		node = node->next;
+	}
+	
+	return node;
 }
