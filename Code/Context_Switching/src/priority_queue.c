@@ -2,7 +2,6 @@
  * @file:   priority_queue.c
  * @brief:  Priority Queue C file
  * @author: Nathan Woltman
- * @author: Justin Gagne
  * @date:   2014/01/26
  */
 
@@ -42,19 +41,40 @@ void push(PriorityQueue* pqueue, QNode* node, int priority)
 	enqueue(&(pqueue->queues[priority]), node);
 }
 
-QNode* remove(PriorityQueue* pqueue, int old_priority, void* pcb_address)
+int remove_at_priority(PriorityQueue* pqueue, QNode* node, int priority)
 {
-	QNode* node;
-
+	Queue queue;
 	assert(pqueue != NULL);
-	
-	// Assign the first node in the old priority queue's to node
-	node = (QNode*)pqueue->queues[old_priority].first;
-	
-	// loop through the queue until we reach the end or find the matching PCB
-	while(node != NULL && (void*)node != pcb_address) {
-		node = node->next;
+	queue = pqueue->queues[priority];
+
+	//If the queue is empty the node cannot be found
+	if (q_empty(&queue)) {
+		return 0;
 	}
-	
-	return node;
+
+	//Remove the node from its current queue
+	if (queue.first == node) {
+		queue.first = node->next;
+		//If the new first node is null, the queue is now empty so set the last node to null as well
+		if (queue.first == NULL) {
+			queue.last = NULL;
+		}
+	}
+	else {
+		QNode* iterator = queue.first;
+		while(iterator->next != node) {
+			if (iterator->next == NULL) {
+				return 0;
+			}
+			iterator = iterator->next;
+		}
+		//Getting here means the node was found and it is equal to iterator->next
+		iterator->next = node->next; //Replace the found/input node with the next node
+		if (queue.last == node) {
+			//The iterator node is now the last node in the queue
+			queue.last = iterator;
+		}
+	}
+
+	return 1; //Success
 }

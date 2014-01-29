@@ -44,7 +44,7 @@ QNode* dequeue(Queue* queue)
 	if (firstNode != NULL) {
 		queue->first = firstNode->next;
 	}
-	//If the new first node is null, the queue is empty so set the last node to null as well
+	//If the new first node is null, the queue is now empty so set the last node to null as well
 	if (queue->first == NULL) {
 		queue->last = NULL;
 	}

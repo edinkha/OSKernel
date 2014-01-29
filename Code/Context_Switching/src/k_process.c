@@ -185,11 +185,11 @@ PCB* get_proc_by_pid(int pid)
 
 int get_process_priority(int pid)
 {
-	if (get_proc_by_pid(pid) == NULL) {
+	PCB* pcb = get_proc_by_pid(pid);
+	if (pcb == NULL) {
 		return RTX_ERR;
 	}
-	
-	return get_proc_by_pid(pid)->m_priority;
+	return pcb->m_priority;
 }
 
 int set_process_priority(int pid, int priority)
@@ -205,15 +205,18 @@ int set_process_priority(int pid, int priority)
 		return RTX_ERR;
 	}
 	
-	if (pcb->m_priority == priority) {
+	if (pcb->m_priority == priority) { //Nothing to change
 		return RTX_OK;
 	}
 	
-	switch(pcb->m_state) {
+	switch (pcb->m_state) {
 		case NEW:
 		case READY:
-			// TODO: basically, need to remove from one priority queue and move to another
-			push(ready_pq, remove(ready_pq, pcb->m_priority, (void*)pcb), priority);
+			//Move the process to its new location in the priority queue based on its new priority
+			if (!remove_at_priority(ready_pq, (QNode*)pcb, pcb->m_priority)) {
+				return RTX_ERR;
+			}
+			push(ready_pq, (QNode*)pcb, priority);
 		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
 			k_release_processor();
