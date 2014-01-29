@@ -74,9 +74,7 @@ void process_init()
 	/* put each process (minus null process) in the ready queue */
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
 		PCB* process = gp_pcbs[i];
-
-		// Push each process to the priority queue
-		push(ready_q, (QNode *)process, process->m_priority);
+		push(ready_pq, (QNode *)process, process->m_priority);
 	}
 }
 
@@ -89,7 +87,7 @@ void process_init()
 
 PCB *scheduler(void)
 {
-	PCB* next_pcb = (PCB *)pop(ready_q);
+	PCB* next_pcb = (PCB *)pop(ready_pq);
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
@@ -99,50 +97,54 @@ PCB *scheduler(void)
 	}
 }
 
-/*@brief: switch out old pcb (p_pcb_old), run the new pcb (gp_current_process)
- *@param: p_pcb_old, the old pcb that was in RUN
- *@return: RTX_OK upon success
- *         RTX_ERR upon failure
- *PRE:  p_pcb_old and gp_current_process are pointing to valid PCBs.
- *POST: if gp_current_process was NULL, then it gets set to pcbs[0].
- *      No other effect on other global variables.
+/* @brief: switch out old pcb (p_pcb_old), run the new pcb (gp_current_process)
+ * @param: p_pcb_old, the old pcb that was in RUN
+ * @return: RTX_OK upon success
+ *          RTX_ERR upon failure
+ * PRE:  p_pcb_old and gp_current_process are pointing to valid PCBs.
+ * POST: if gp_current_process was NULL, then it gets set to pcbs[0].
+ *       No other effect on other global variables.
  */
-int process_switch(PCB *p_pcb_old) 
+int process_switch(PCB* p_pcb_old)
 {
-	PROC_STATE_E state;
-	
-	state = gp_current_process->m_state;
-
-	if (state == NEW) {
+	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-			p_pcb_old->m_state = RDY;
-			p_pcb_old->mp_sp = (U32 *) __get_MSP();
+			p_pcb_old->m_state = READY;
+			p_pcb_old->mp_sp = (U32*) __get_MSP();
 			// put the old process back in the ready queue if it's not the null process
 			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
-				push(ready_q, (QNode *)p_pcb_old, p_pcb_old->m_priority);
+				push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 			}
 		}
 		gp_current_process->m_state = RUN;
 		__set_MSP((U32) gp_current_process->mp_sp);
 		__rte();  // pop exception stack frame from the stack for a new processes
-	} 
+	}
 	
 	/* The following will only execute if the if block above is FALSE */
-
+	
 	if (gp_current_process != p_pcb_old) {
-		if (state == RDY){ 		
-			p_pcb_old->m_state = RDY;
-			p_pcb_old->mp_sp = (U32 *) __get_MSP(); // save the old process's sp
-			// put the old process back in the ready queue if it's not the null process
-			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
-				push(ready_q, (QNode *)p_pcb_old, p_pcb_old->m_priority);
-			}
-			gp_current_process->m_state = RUN;
-			__set_MSP((U32) gp_current_process->mp_sp); //switch to the new proc's stack  			
-		} else {
-			gp_current_process = p_pcb_old; // revert back to the old proc on error
+		//If the new current process isn't in the READY state,
+		//revert to the old process and return an error
+		if (gp_current_process->m_state != READY) {
+			gp_current_process = p_pcb_old;
 			return RTX_ERR;
-		} 
+		}
+		
+		p_pcb_old->mp_sp = (U32*) __get_MSP();  // save the old process's sp
+		
+		//If the old process isn't blocked or waiting for a message, set it to ready
+		if (p_pcb_old->m_state != BLOCKED && p_pcb_old->m_state != WAIT_FOR_MSG) {
+			p_pcb_old->m_state = READY;
+			//Put the old process back in the ready queue if it's not the null process
+			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
+				push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
+			}
+		}
+
+		//Run the new current process
+		gp_current_process->m_state = RUN;
+		__set_MSP((U32) gp_current_process->mp_sp); //switch to the new proc's stack
 	}
 	
 	return RTX_OK;
@@ -209,10 +211,9 @@ int set_proc_priority(int pid, int priority)
 	
 	switch(pcb->m_state) {
 		case NEW:
-		case RDY:
+		case READY:
 			// DO STUFF.
-		case RUN:
-		case BLOCKED:
+		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
 			break;
 	}

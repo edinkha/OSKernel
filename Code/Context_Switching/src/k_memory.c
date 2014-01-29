@@ -19,7 +19,7 @@ U32 *gp_stack; /* The last allocated stack low address. 8 bytes aligned */
                /* The first stack starts at the RAM high address */
 	       /* stack grows down. Fully decremental stack */
 ForwardList* heap; // Pointer to the heap
-PriorityQueue* ready_q;
+PriorityQueue* ready_pq;
 Queue* blocked_q;
 
 /**
@@ -79,7 +79,7 @@ void memory_init(void)
 	}
 	
 	/* allocate memory for ready and blocked queue */
-	ready_q = (PriorityQueue *)p_end;
+	ready_pq = (PriorityQueue *)p_end;
 	p_end += sizeof(PriorityQueue);
 	
 	blocked_q = (Queue *)p_end;
@@ -163,11 +163,11 @@ int k_release_memory_block(void *p_mem_blk) {
 	//(since now there is memory available for that process to continue)
 	if (!q_empty(blocked_q)) {
 		to_unblock = dequeue(blocked_q);
-		((PCB *)to_unblock)->m_state = RDY;
+		((PCB *)to_unblock)->m_state = READY;
 	#ifdef DEBUG_0 
 		printf("unblocking process ID %x\n", ((PCB *)to_unblock)->m_pid);
 	#endif
-		push(ready_q, to_unblock, ((PCB *)to_unblock)->m_priority);
+		push(ready_pq, to_unblock, ((PCB *)to_unblock)->m_priority);
 		k_release_processor();
 	}	
 	

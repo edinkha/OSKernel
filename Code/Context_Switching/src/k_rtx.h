@@ -37,7 +37,7 @@ typedef unsigned int U32;
 /* process states */
 typedef enum {
 	NEW = 0,
-	RDY,
+	READY,
 	BLOCKED,
 	WAIT_FOR_MSG,
 	RUN,
@@ -74,6 +74,6 @@ typedef struct mem_block
 } MEM_BLOCK;
 
 extern Queue *blocked_q;
-extern PriorityQueue *ready_q;
+extern PriorityQueue *ready_pq;
 
 #endif // ! K_RTX_H_
