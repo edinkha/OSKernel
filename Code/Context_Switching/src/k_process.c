@@ -212,7 +212,7 @@ int set_proc_priority(int pid, int priority)
 	switch(pcb->m_state) {
 		case NEW:
 		case READY:
-			// DO STUFF.
+			// TODO: basically, need to remove from one priority queue and move to another
 		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
 			break;

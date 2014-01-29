@@ -45,16 +45,30 @@ void proc1(void)
 	int ret_val = 20;
 	while ( 1) {
 
-#ifdef DEBUG_0
-			printf("proc1 requesting memory\n");
-#endif /* DEBUG_0 */
+		#ifdef DEBUG_0
+			printf("proc1 requesting memory block 1\n");
+		#endif /* DEBUG_0 */
 		memblock1 = request_memory_block();
+		
+		#ifdef DEBUG_0
+			printf("proc1 requesting memory block 2\n");
+		#endif /* DEBUG_0 */
 		memblock2 = request_memory_block();
+		
+		// Let process 2 execute
 		ret_val = release_processor();
-#ifdef DEBUG_0
-			printf("proc1 releasing memory\n");
-#endif /* DEBUG_0 */
+		
+		// Come back here once process 2 gets blocked
+		#ifdef DEBUG_0
+			printf("proc1 releasing memory block 1\n");
+		#endif /* DEBUG_0 */
 		release_memory_block(memblock1);
+		
+		// Process 2 gets to run now because it's unblocked... Therefore it runs, then execution returns here
+		// after it obtains a mem block
+		#ifdef DEBUG_0
+			printf("proc1 releasing memory block 2\n");
+		#endif /* DEBUG_0 */
 		release_memory_block(memblock2);
 	}
 }
@@ -65,20 +79,24 @@ void proc1(void)
  */
 void proc2(void)
 {
-	void* memblock1 = NULL;
+	void* memblock3 = NULL;
 
 	int ret_val = 20;
 	while ( 1) {
 
-#ifdef DEBUG_0
-			printf("proc2 requesting memory\n");
-#endif /* DEBUG_0 */
-		memblock1 = request_memory_block();
+		// No memory blocks available, proc 2 gets blocked here...
+		#ifdef DEBUG_0
+			printf("proc2 requesting memory block 3\n");
+		#endif /* DEBUG_0 */
+		memblock3 = request_memory_block();
+		
+		// Once it gets unblocked and takes the memory block it requested above, proc1 gets to run again
 		ret_val = release_processor();
-#ifdef DEBUG_0
-			printf("proc2 releasing memory\n");
-#endif /* DEBUG_0 */
-		release_memory_block(memblock1);
+		
+		#ifdef DEBUG_0
+			printf("proc2 releasing memory block 3\n");
+		#endif /* DEBUG_0 */
+		release_memory_block(memblock3);
 	}
 }
 

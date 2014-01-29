@@ -142,6 +142,9 @@ void *k_request_memory_block(void) {
 		enqueue(blocked_q, (QNode *) gp_current_process);
 		k_release_processor();
 	}
+	#ifdef DEBUG_0 
+		printf("k_request_memory_block: returning new block...\n", gp_current_process->m_pid);
+	#endif
 	//Pop a memory block off the heap and return a pointer to it
 	return (void *) pop_front(heap);
 }
