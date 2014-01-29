@@ -183,7 +183,7 @@ PCB* get_proc_by_pid(int pid)
 	return NULL; //Error
 }
 
-int get_proc_priority(int pid)
+int get_process_priority(int pid)
 {
 	if (get_proc_by_pid(pid) == NULL) {
 		return RTX_ERR;
@@ -192,7 +192,7 @@ int get_proc_priority(int pid)
 	return get_proc_by_pid(pid)->m_priority;
 }
 
-int set_proc_priority(int pid, int priority)
+int set_process_priority(int pid, int priority)
 {
 	PCB* pcb;
 	
@@ -216,6 +216,7 @@ int set_proc_priority(int pid, int priority)
 			push(ready_pq, remove(ready_pq, pcb->m_priority, (void*)pcb), priority);
 		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
+			k_release_processor();
 			break;
 	}
 	
