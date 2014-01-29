@@ -132,16 +132,17 @@ U32 *alloc_stack(U32 size_b)
 void *k_request_memory_block(void) {
 #ifdef DEBUG_0 
 	printf("k_request_memory_block: entering...\n");
-#endif /* ! DEBUG_0 */
-	while (empty(heap))
-	{
-		#ifdef DEBUG_0 
-			printf("process blocked \n");
-		#endif /* ! DEBUG_0 */
+#endif
+	//While there are no memory blocks left on the heap, block the current process
+	while (empty(heap)) {
+	#ifdef DEBUG_0 
+		printf("process %d blocked \n", gp_current_process->m_pid);
+	#endif
 		gp_current_process->m_state = BLOCKED;
 		enqueue(blocked_q, (QNode *) gp_current_process);
 		k_release_processor();
 	}
+	//Pop a memory block off the heap and return a pointer to it
 	return (void *) pop_front(heap);
 }
 
@@ -149,17 +150,23 @@ int k_release_memory_block(void *p_mem_blk) {
 	QNode* to_unblock;
 #ifdef DEBUG_0 
 	printf("k_release_memory_block: releasing block @ 0x%x\n", p_mem_blk);
-#endif /* ! DEBUG_0 */
+#endif
+	//Return an error if the input memory block is not valid
 	if (p_mem_blk == NULL) {
 		return RTX_ERR;
 	}
+
+	//Put the memory block back onto the heap
 	push_front(heap, p_mem_blk);
+
+	//If the blocked queue is not empty, take the first process and put it on the ready queue
+	//(since now there is memory available for that process to continue)
 	if (!q_empty(blocked_q)) {
 		to_unblock = dequeue(blocked_q);
 		((PCB *)to_unblock)->m_state = RDY;
-		#ifdef DEBUG_0 
-	printf("unblocking process ID %x\n", ((PCB *)to_unblock)->m_pid);
-#endif /* ! DEBUG_0 */
+	#ifdef DEBUG_0 
+		printf("unblocking process ID %x\n", ((PCB *)to_unblock)->m_pid);
+	#endif
 		push(ready_q, to_unblock, ((PCB *)to_unblock)->m_priority);
 		k_release_processor();
 	}	

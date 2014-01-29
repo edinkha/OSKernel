@@ -24,7 +24,7 @@ QNode* pop(PriorityQueue* pqueue)
 	//Loop through the queues by priority (0 is highest)
 	//and dequeue the first non-empty queue
 	for (i = 0; i < NUM_PRIORITIES; i++) {
-		queue = &pqueue->queues[i];
+		queue = &(pqueue->queues[i]);
 		if (!q_empty(queue)) {
 			return dequeue(queue);
 		}

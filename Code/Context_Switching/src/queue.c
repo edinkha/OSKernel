@@ -31,20 +31,20 @@ void enqueue(Queue* queue, QNode* node)
 		queue->last->next = node;
 	}
 	queue->last = node;
-	node->next = NULL;
+	node->next = NULL; //Indicates the end of the queue
 }
 
 QNode* dequeue(Queue* queue)
 {
 	QNode* firstNode;
 	assert(queue != NULL);
-	
 	firstNode = queue->first;
+
 	//If the front node is not null, set the next node to the front node
 	if (firstNode != NULL) {
 		queue->first = firstNode->next;
 	}
-	
+	//If the new first node is null, the queue is empty so set the last node to null as well
 	if (queue->first == NULL) {
 		queue->last = NULL;
 	}
