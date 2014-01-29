@@ -17,13 +17,13 @@
 #define RTX_OK  0
 
 #define NULL 0
-#define NUM_TEST_PROCS 6
+#define NUM_TEST_PROCS 2
 
 #define USR_SZ_MEM_BLOCK 0x80		 /* heap memory block size is 128B     */
 
 #ifdef DEBUG_0
 #define USR_SZ_STACK 0x200         /* user proc stack size 512B   */
-#define NUM_HEAP_BLOCKS 3         /* TODO: figure out the right number of blocks */
+#define NUM_HEAP_BLOCKS 2         /* TODO: figure out the right number of blocks */
 #else
 #define USR_SZ_STACK 0x100         /* user proc stack size 218B  */
 #define NUM_HEAP_BLOCKS 10         /* TODO: figure out the right number of blocks */

@@ -28,7 +28,7 @@ PCB **gp_pcbs;                  /* array of pcbs */
 PCB *gp_current_process = NULL; /* always point to the current RUN process */
 
 /* process initialization table */
-PROC_INIT g_proc_table[NUM_TEST_PROCS];
+PROC_INIT g_proc_table[NUM_TEST_PROCS + 1];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
 /**
@@ -42,11 +42,6 @@ void process_init()
   
         /* fill out the initialization table */
 	set_test_procs();
-	// null process
-	g_test_procs[NUM_TEST_PROCS - 1].m_pid=(U32)(0);
-	g_test_procs[NUM_TEST_PROCS - 1].m_priority=4;
-	g_test_procs[NUM_TEST_PROCS - 1].m_stack_size=0x100;
-	g_test_procs[NUM_TEST_PROCS - 1].mpf_start_pc = &nullproc;
 	
 	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
 		g_proc_table[i].m_pid = g_test_procs[i].m_pid;
@@ -54,9 +49,14 @@ void process_init()
 		g_proc_table[i].m_stack_size = g_test_procs[i].m_stack_size;
 		g_proc_table[i].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
+	// null process initialization
+	g_proc_table[NUM_TEST_PROCS].m_pid = (U32)(0);
+	g_proc_table[NUM_TEST_PROCS].m_priority = 4;
+	g_proc_table[NUM_TEST_PROCS].m_stack_size = 0x100;
+	g_proc_table[NUM_TEST_PROCS].mpf_start_pc = &nullproc;
   
 	/* initilize exception stack frame (i.e. initial context) for each process */
-	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
+	for ( i = 0; i < NUM_TEST_PROCS + 1; i++ ) {
 		int j;
 		(gp_pcbs[i])->m_pid = (g_proc_table[i]).m_pid;
 		(gp_pcbs[i])->m_priority = (g_proc_table[i]).m_priority;
@@ -72,7 +72,7 @@ void process_init()
 	}
 	
 	/* put each process (minus null process) in the ready queue */
-	for (i = 0; i < NUM_TEST_PROCS - 1; i++) {
+	for (i = 0; i < NUM_TEST_PROCS; i++) {
 		PCB* process = gp_pcbs[i];
 
 		// Push each process to the priority queue
@@ -93,7 +93,7 @@ PCB *scheduler(void)
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
-		return gp_pcbs[NUM_TEST_PROCS - 1];
+		return gp_pcbs[NUM_TEST_PROCS];
 	} else {
 		return next_pcb;
 	}
@@ -118,7 +118,7 @@ int process_switch(PCB *p_pcb_old)
 			p_pcb_old->m_state = RDY;
 			p_pcb_old->mp_sp = (U32 *) __get_MSP();
 			// put the old process back in the ready queue if it's not the null process
-			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS - 1]) {
+			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
 				push(ready_q, (QNode *)p_pcb_old, p_pcb_old->m_priority);
 			}
 		}
@@ -134,7 +134,7 @@ int process_switch(PCB *p_pcb_old)
 			p_pcb_old->m_state = RDY;
 			p_pcb_old->mp_sp = (U32 *) __get_MSP(); // save the old process's sp
 			// put the old process back in the ready queue if it's not the null process
-			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS - 1]) {
+			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
 				push(ready_q, (QNode *)p_pcb_old, p_pcb_old->m_priority);
 			}
 			gp_current_process->m_state = RUN;

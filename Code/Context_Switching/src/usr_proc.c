@@ -19,18 +19,17 @@ PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
 void set_test_procs() {
 	int i;
-	for( i = 0; i < NUM_TEST_PROCS - 1; i++ ) {
+	for( i = 0; i < NUM_TEST_PROCS; i++ ) {
 		g_test_procs[i].m_pid=(U32)(i+1);
 		g_test_procs[i].m_priority=LOWEST;
 		g_test_procs[i].m_stack_size=0x100;
 	}
 	
-  
 	g_test_procs[0].mpf_start_pc = &proc1;
 	g_test_procs[1].mpf_start_pc = &proc2;
-	g_test_procs[2].mpf_start_pc = &proc3;
-	g_test_procs[3].mpf_start_pc = &proc4;
-	g_test_procs[4].mpf_start_pc = &proc5;
+// 	g_test_procs[2].mpf_start_pc = &proc3;
+// 	g_test_procs[3].mpf_start_pc = &proc4;
+// 	g_test_procs[4].mpf_start_pc = &proc5;
 }
 
 
@@ -40,18 +39,23 @@ void set_test_procs() {
  */
 void proc1(void)
 {
-	int i = 0;
-	int ret_val = 10;
+	void* memblock1 = NULL;
+	void* memblock2 = NULL;
+
+	int ret_val = 20;
 	while ( 1) {
-		if ( i != 0 && i%5 == 0 ) {
-			uart0_put_string("\n\r");
-			ret_val = release_processor();
+
 #ifdef DEBUG_0
-			printf("proc1: ret_val=%d\n", ret_val);
+			printf("proc1 requesting memory\n");
 #endif /* DEBUG_0 */
-		}
-		uart0_put_char('A' + i%26);
-		i++;
+		memblock1 = request_memory_block();
+		memblock2 = request_memory_block();
+		ret_val = release_processor();
+#ifdef DEBUG_0
+			printf("proc1 releasing memory\n");
+#endif /* DEBUG_0 */
+		release_memory_block(memblock1);
+		release_memory_block(memblock2);
 	}
 }
 
@@ -61,94 +65,96 @@ void proc1(void)
  */
 void proc2(void)
 {
-	int i = 0;
-	int ret_val = 20;
-	while ( 1) {
-		if ( i != 0 && i%5 == 0 ) {
-			uart0_put_string("\n\r");
-			ret_val = release_processor();
-#ifdef DEBUG_0
-			printf("proc2: ret_val=%d\n", ret_val);
-#endif /* DEBUG_0 */
-		}
-		uart0_put_char('0' + i%10);
-		i++;
-	}
-}
-
-void proc3(void)
-{
-	void* memblock1 = NULL;
-	void* memblock2 = NULL;
-
-	int ret_val = 20;
-	while ( 1) {
-
-#ifdef DEBUG_0
-			printf("proc3 requesting memory\n");
-#endif /* DEBUG_0 */
-		memblock1 = request_memory_block();
-		memblock2 = request_memory_block();
-		ret_val = release_processor();
-#ifdef DEBUG_0
-			printf("proc3 releasing memory\n");
-#endif /* DEBUG_0 */
-		release_memory_block(memblock1);
-		release_memory_block(memblock2);
-	}
-}
-
-void proc4(void)
-{
 	void* memblock1 = NULL;
 
 	int ret_val = 20;
 	while ( 1) {
 
 #ifdef DEBUG_0
-			printf("proc4 requesting memory\n");
+			printf("proc2 requesting memory\n");
 #endif /* DEBUG_0 */
 		memblock1 = request_memory_block();
 		ret_val = release_processor();
 #ifdef DEBUG_0
-			printf("proc4 releasing memory\n");
+			printf("proc2 releasing memory\n");
 #endif /* DEBUG_0 */
 		release_memory_block(memblock1);
 	}
 }
 
-void proc5(void)
-{
-	void* memblock1 = NULL;
+// void proc3(void)
+// {
+// 	void* memblock1 = NULL;
+// 	void* memblock2 = NULL;
 
-	int ret_val = 20;
-	while ( 1) {
+// 	int ret_val = 20;
+// 	while ( 1) {
 
-#ifdef DEBUG_0
-			printf("proc5 requesting memory\n");
-#endif /* DEBUG_0 */
-		memblock1 = request_memory_block();
-		ret_val = release_processor();
-#ifdef DEBUG_0
-			printf("proc5 releasing memory\n");
-#endif /* DEBUG_0 */
-		release_memory_block(memblock1);
-	}
-}
+// #ifdef DEBUG_0
+// 			printf("proc3 requesting memory\n");
+// #endif /* DEBUG_0 */
+// 		memblock1 = request_memory_block();
+// 		memblock2 = request_memory_block();
+// 		ret_val = release_processor();
+// #ifdef DEBUG_0
+// 			printf("proc3 releasing memory\n");
+// #endif /* DEBUG_0 */
+// 		release_memory_block(memblock1);
+// 		release_memory_block(memblock2);
+// 	}
+// }
 
-void proc6(void)
-{
-	int i = 0;
-	int ret_val = 20;
-	while ( 1) {
-		if ( i != 0 && i%5 == 0 ) {
-			uart0_put_string("\n\r");
-			ret_val = release_processor();
-#ifdef DEBUG_0
-			printf("proc2: ret_val=%d\n", ret_val);
-#endif /* DEBUG_0 */
-		}
-		uart0_put_char('0' + i%10);
-		i++;
-	}
-}
+// void proc4(void)
+// {
+// 	void* memblock1 = NULL;
+
+// 	int ret_val = 20;
+// 	while ( 1) {
+
+// #ifdef DEBUG_0
+// 			printf("proc4 requesting memory\n");
+// #endif /* DEBUG_0 */
+// 		memblock1 = request_memory_block();
+// 		ret_val = release_processor();
+// #ifdef DEBUG_0
+// 			printf("proc4 releasing memory\n");
+// #endif /* DEBUG_0 */
+// 		release_memory_block(memblock1);
+// 	}
+// }
+
+// void proc5(void)
+// {
+// 	void* memblock1 = NULL;
+
+// 	int ret_val = 20;
+// 	while ( 1) {
+
+// #ifdef DEBUG_0
+// 			printf("proc5 requesting memory\n");
+// #endif /* DEBUG_0 */
+// 		memblock1 = request_memory_block();
+// 		ret_val = release_processor();
+// #ifdef DEBUG_0
+// 			printf("proc5 releasing memory\n");
+// #endif /* DEBUG_0 */
+// 		release_memory_block(memblock1);
+// 	}
+// }
+
+// void proc6(void)
+// {
+// 	int i = 0;
+// 	int ret_val = 20;
+// 	while ( 1) {
+// 		if ( i != 0 && i%5 == 0 ) {
+// 			uart0_put_string("\n\r");
+// 			ret_val = release_processor();
+// #ifdef DEBUG_0
+// 			printf("proc2: ret_val=%d\n", ret_val);
+// #endif /* DEBUG_0 */
+// 		}
+// 		uart0_put_char('0' + i%10);
+// 		i++;
+// 	}
+// }
