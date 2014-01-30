@@ -16,6 +16,7 @@ typedef struct forward_list {
 	ListNode* front;
 } ForwardList;
 
+void init(ForwardList* list);						// Initializes the ForwardList
 int empty(ForwardList* list);						// Returns 1 if the list is empty; else returns 0
 ListNode* pop_front(ForwardList* list);				// Removes and returns a pointer to the first node in the list
 void push_front(ForwardList* list, ListNode* node);	// Adds the input node to the front of the list

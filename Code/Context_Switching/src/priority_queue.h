@@ -23,6 +23,12 @@ typedef struct priority_queue {
 	Queue queues[NUM_PRIORITIES];
 } PriorityQueue;
 
+
+/**
+ * @brief: Initializes the given PriorityQueue
+ */
+void init_pq(PriorityQueue* pqueue);
+
 /**
  * @brief: Gets the highest priority node in the queue and removes the node from the queue
  * @return: QNode pointer of the popped node

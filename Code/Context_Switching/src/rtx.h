@@ -7,8 +7,9 @@
 
 /* ----- Definitations ----- */
 #define RTX_ERR -1
+#define RTX_OK 0
 #define NULL 0
-#define NUM_TEST_PROCS 2
+#define NUM_TEST_PROCS 4
 /* Process Priority. The bigger the number is, the lower the priority is*/
 #define HIGH    0
 #define MEDIUM  1

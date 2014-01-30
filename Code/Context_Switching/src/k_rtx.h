@@ -1,7 +1,7 @@
 /** 
  * @file:   k_rtx.h
  * @brief:  kernel deinitiation and data structure header file
- * @auther: Yiqing Huang
+ * @author: Yiqing Huang
  * @date:   2014/01/17
  */
  
@@ -17,16 +17,16 @@
 #define RTX_OK  0
 
 #define NULL 0
-#define NUM_TEST_PROCS 2
+#define NUM_TEST_PROCS 4
+#define NUM_PROCS 5
 
-#define USR_SZ_MEM_BLOCK 0x80		 /* heap memory block size is 128B     */
+#define USR_SZ_MEM_BLOCK 0x80	/* heap memory block size is 128B     */
 
 #ifdef DEBUG_0
-#define USR_SZ_STACK 0x200         /* user proc stack size 512B   */
-#define NUM_HEAP_BLOCKS 2         /* TODO: figure out the right number of blocks */
+#define USR_SZ_STACK 0x200		/* user proc stack size 512B   */
+#define NUM_HEAP_BLOCKS 4		/* Blocks just for debugging */
 #else
-#define USR_SZ_STACK 0x100         /* user proc stack size 218B  */
-#define NUM_HEAP_BLOCKS 10         /* TODO: figure out the right number of blocks */
+#define USR_SZ_STACK 0x100		/* user proc stack size 218B  */
 #endif /* DEBUG_0 */
 
 
@@ -51,26 +51,25 @@ typedef enum {
 */
 typedef struct pcb 
 { 
-	struct pcb *mp_next;  // next pcb
-	U32 *mp_sp;		/* stack pointer of the process */
-	U32 m_pid;		/* process id */
+	struct pcb *mp_next;	/* next pcb */
+	U32 *mp_sp;				/* stack pointer of the process */
+	U32 m_pid;				/* process id */
 	U32 m_priority;
-	PROC_STATE_E m_state;   /* state of the process */      
+	PROC_STATE_E m_state;	/* state of the process */      
 } PCB;
 
 /* initialization table item */
 typedef struct proc_init
 {	
-	int m_pid;	        /* process id */ 
-	int m_priority;         /* initial priority, not used in this example. */ 
-	int m_stack_size;       /* size of stack in words */
-	void (*mpf_start_pc) ();/* entry point of the process */    
+	int m_pid;				/* process id */ 
+	int m_priority;			/* initial priority, not used in this example. */ 
+	int m_stack_size;		/* size of stack in words */
+	void (*mpf_start_pc)();	/* entry point of the process */    
 } PROC_INIT;
 
 typedef struct mem_block
 {
 	U32 *next_block;
-	//some memory
 } MEM_BLOCK;
 
 extern Queue *blocked_q;

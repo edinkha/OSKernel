@@ -14,6 +14,15 @@
 #include "priority_queue.h"
 
 
+void init_pq(PriorityQueue* pqueue)
+{
+	int i;
+	assert(pqueue != NULL);
+	for (i = 0; i < NUM_PRIORITIES; i++) {
+		pqueue->queues[i].first = pqueue->queues[i].last = NULL;
+	}
+}
+
 QNode* pop(PriorityQueue* pqueue)
 {
 	int i;

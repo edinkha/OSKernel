@@ -14,6 +14,12 @@
 #include "queue.h"
 
 
+void init_q(Queue* queue)
+{
+	assert(queue != NULL);
+	queue->first = queue->last = NULL;
+}
+
 int q_empty(Queue* queue)
 {
 	assert(queue != NULL);

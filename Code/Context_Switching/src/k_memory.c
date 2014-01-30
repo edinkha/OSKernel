@@ -56,21 +56,21 @@ void memory_init(void)
 	int i;
 	MEM_BLOCK* heap_block;
 	U32* stack_end_addr;
-  
+	
 	/* 4 bytes padding */
 	p_end += 4;
 
 	/* allocate memory for pcb pointers   */
 	gp_pcbs = (PCB **)p_end;
-	p_end += NUM_TEST_PROCS * sizeof(PCB *);
+	p_end += NUM_PROCS * sizeof(PCB *);
   
-	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
+	for ( i = 0; i < NUM_PROCS; i++ ) {
 		gp_pcbs[i] = (PCB *)p_end;
 		p_end += sizeof(PCB); 
 	}
 #ifdef DEBUG_0  
-	printf("gp_pcbs[0] = 0x%x \n", gp_pcbs[0]);
-	printf("gp_pcbs[1] = 0x%x \n", gp_pcbs[1]);
+	printf("gp_pcbs[0] = 0x%x \r\n", gp_pcbs[0]);
+	printf("gp_pcbs[1] = 0x%x \r\n", gp_pcbs[1]);
 #endif
 	
 	/* prepare for alloc_stack() to allocate memory for stacks */	
@@ -82,34 +82,40 @@ void memory_init(void)
 	/* allocate memory for ready and blocked queue */
 	ready_pq = (PriorityQueue *)p_end;
 	p_end += sizeof(PriorityQueue);
+	init_pq(ready_pq);
 	
 	blocked_q = (Queue *)p_end;
 	p_end += sizeof(Queue);
+	init_q(blocked_q);
   
 	/* allocate memory for the heap */
 #ifdef DEBUG_0
-	printf("p_end = 0x%x \n", p_end);
+	printf("p_end = 0x%x \r\n", p_end);
 #endif
 	
 	// Assign memory for the heap struct
 	heap = (ForwardList *)p_end; 
 	p_end += sizeof(ForwardList);
+	init(heap);
 	
 	//Find the address of the end of the stack
-	//NUM_TEST_PROCS + 1 for the null process
 	//USR_SZ_STACK + 1 to take into account the 8-byte alignment
 	//-1 for extra padding
-	stack_end_addr = (U32 *)(RAM_END_ADDR - ((NUM_TEST_PROCS + 1) * (USR_SZ_STACK + 1)) - 1);
+	stack_end_addr = (U32 *)(RAM_END_ADDR - ((NUM_PROCS) * (USR_SZ_STACK + 1)) - 1);
 	
 	// Build the heap
+#ifdef DEBUG_0
+	for (i = 0; i < NUM_HEAP_BLOCKS; i++) {
+#else
 	while (p_end + USR_SZ_MEM_BLOCK < (U8 *)stack_end_addr) {
+#endif
 		heap_block = (MEM_BLOCK *)p_end;
 		push_front(heap, (ListNode *)heap_block);
 		p_end += USR_SZ_MEM_BLOCK;
 	}
 	
 #ifdef DEBUG_0
-	printf("p_end = 0x%x \n", p_end);
+	printf("p_end = 0x%x \r\n", p_end);
 #endif
 	
 }
@@ -138,19 +144,19 @@ U32 *alloc_stack(U32 size_b)
 
 void *k_request_memory_block(void) {
 #ifdef DEBUG_0 
-	printf("k_request_memory_block: entering...\n");
+	printf("k_request_memory_block: entering...\r\n");
 #endif
 	//While there are no memory blocks left on the heap, block the current process
 	while (empty(heap)) {
 	#ifdef DEBUG_0 
-		printf("process %d blocked \n", gp_current_process->m_pid);
+		printf("process %d blocked \r\n", gp_current_process->m_pid);
 	#endif
 		gp_current_process->m_state = BLOCKED;
 		enqueue(blocked_q, (QNode *) gp_current_process);
 		k_release_processor();
 	}
 	#ifdef DEBUG_0 
-		printf("k_request_memory_block: returning new block...\n", gp_current_process->m_pid);
+		printf("k_request_memory_block: returning new block...\r\n", gp_current_process->m_pid);
 	#endif
 	//Pop a memory block off the heap and return a pointer to it
 	return (void *) pop_front(heap);
@@ -159,7 +165,7 @@ void *k_request_memory_block(void) {
 int k_release_memory_block(void *p_mem_blk) {
 	QNode* to_unblock;
 #ifdef DEBUG_0 
-	printf("k_release_memory_block: releasing block @ 0x%x\n", p_mem_blk);
+	printf("k_release_memory_block: releasing block @ 0x%x\r\n", p_mem_blk);
 #endif
 	//Return an error if the input memory block is not valid
 	if (p_mem_blk == NULL) {
@@ -167,7 +173,7 @@ int k_release_memory_block(void *p_mem_blk) {
 	}
 
 	//Put the memory block back onto the heap
-	push_front(heap, p_mem_blk);
+	push_front(heap, (ListNode *)p_mem_blk);
 
 	//If the blocked queue is not empty, take the first process and put it on the ready queue
 	//(since now there is memory available for that process to continue)
@@ -175,7 +181,7 @@ int k_release_memory_block(void *p_mem_blk) {
 		to_unblock = dequeue(blocked_q);
 		((PCB *)to_unblock)->m_state = READY;
 	#ifdef DEBUG_0 
-		printf("unblocking process ID %x\n", ((PCB *)to_unblock)->m_pid);
+		printf("unblocking process ID %x\r\n", ((PCB *)to_unblock)->m_pid);
 	#endif
 		push(ready_pq, to_unblock, ((PCB *)to_unblock)->m_priority);
 		k_release_processor();

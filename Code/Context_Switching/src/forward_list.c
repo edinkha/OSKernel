@@ -14,6 +14,11 @@
 #include "forward_list.h"
 
 
+void init(ForwardList* list) {
+	assert(list != NULL);
+	list->front = NULL;
+}
+
 int empty(ForwardList* list)
 {
 	assert(list != NULL);
@@ -24,12 +29,13 @@ ListNode* pop_front(ForwardList* list)
 {
 	ListNode* frontNode;
 	assert(list != NULL);
-	
 	frontNode = list->front;
+
 	//If the front node is not null, set the next node to the front node
 	if (frontNode != NULL) {
 		list->front = frontNode->next;
 	}
+	
 	return frontNode;
 }
 

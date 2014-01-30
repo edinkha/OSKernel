@@ -17,6 +17,7 @@ typedef struct queue {
 	QNode* last;
 } Queue;
 
+void init_q(Queue* queue);					// Initializes the given Queue
 int q_empty(Queue* queue);					// Returns 1 if the queue is empty; else returns 0
 void enqueue(Queue* queue, QNode* node);	// Adds the input node to the end of the queue
 QNode* dequeue(Queue* queue);				// Removes and returns a pointer to the node at the front of the queue
