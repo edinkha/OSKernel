@@ -1,8 +1,6 @@
 /**
  * @file:   k_memory.c
- * @brief:  kernel memory managment routines
- * @author: Yiqing Huang
- * @date:   2014/01/17
+ * @brief:  kernel memory management routines
  */
 
 #include "k_memory.h"
@@ -11,7 +9,6 @@
 #include "printf.h"
 #endif /* ! DEBUG_0 */
 
-// Add k_release_processor here
 extern int k_release_processor(void);
 
 /* ----- Global Variables ----- */
@@ -19,8 +16,8 @@ U32 *gp_stack; /* The last allocated stack low address. 8 bytes aligned */
                /* The first stack starts at the RAM high address */
 	       /* stack grows down. Fully decremental stack */
 ForwardList* heap; // Pointer to the heap
-PriorityQueue* ready_pq;
-Queue* blocked_q;
+PriorityQueue* ready_pq; // Ready queue to hold the PCBs
+Queue* blocked_q; // Blocked queue to hold the blocked PCBs
 
 /**
  * @brief: Initialize RAM as follows:
@@ -153,6 +150,7 @@ void *k_request_memory_block(void) {
 	#endif
 		gp_current_process->m_state = BLOCKED;
 		enqueue(blocked_q, (QNode *) gp_current_process);
+		// handle preemption
 		k_release_processor();
 	}
 	#ifdef DEBUG_0 
@@ -184,6 +182,7 @@ int k_release_memory_block(void *p_mem_blk) {
 		printf("unblocking process ID %x\r\n", ((PCB *)to_unblock)->m_pid);
 	#endif
 		push(ready_pq, to_unblock, ((PCB *)to_unblock)->m_priority);
+		// handle preemption
 		k_release_processor();
 	}	
 	

@@ -1,19 +1,19 @@
 /*
-STEP-THROUGH OF TEST PROCS:
-
+STEP-THROUGH OF 4 TEST PROCS:
+		NOTE: There are 4 memory blocks allocated when DEBUG_0 is set.
         ! - each of the blocks starts off with the lowest priority
         ! - proc1 requests 2 blocks and gets them
         ! - proc2 requests 2 blocks and gets them
 		! - proc2 sets proc1 priority to next highest (low)
 		! - proc1 requests another block and gets blocked
 		! - proc3 gets run and sets proc2 priority to 2nd highest (medium)
-		! - proc2 gets all proc priorities -- should be: pid1 => 2, pid2 => 1, pid3 => 3, pid4 => 3
+		! - proc2 gets all proc priorities -- should be: pid1 => LOW, pid2 => MEDIUM, pid3 => LOWEST, pid4 => LOWEST
 		! - proc2 releases a memblock
 		! - proc1 gets unblocked and releases processor
 		! - proc2 releases another memblock
 		! - since nothing is blocked, still running proc2
 		! - proc2 sets proc4 priority to highest (high)
-		! - proc4 gets all priorities -- should be: pid1 => 2, pid2 => 1, pid3 => 3, pid4 => 0
+		! - proc4 gets all priorities -- should be: pid1 => LOW, pid2 => MEDIUM, pid3 => LOWEST, pid4 => HIGH
 		! - proc4 releases processor
 		! - proc2 requests 2 memblocks -> gets first, then blocked on second
 		! - proc4 is run again, requests a memblock and gets blocked
@@ -45,8 +45,6 @@ TOTAL TEST CHECKS:
 #include "printf.h"
 #endif /* DEBUG_1 */
 
-// HAVE NUM_TEST_PROCS = 4
-// HAVE NUM_HEAP_BLOCKS = 4
 PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
 void set_test_procs()
@@ -94,7 +92,6 @@ int results_printed = 0,
 			num_tests_passed = 0,
 			num_tests_failed = 0;
 
-//Have proc1 ask for two memory blocks upfront, another one to block later
 void proc1(void)
 {
 	void* memblock1 = NULL;
@@ -201,7 +198,6 @@ void proc1(void)
 	}
 }
 
-//proc 2 will ask for 2 blocks of memory, then another 2
 void proc2(void)
 {
 	void* memblock1 = NULL;
@@ -267,21 +263,16 @@ void proc2(void)
 	}
 }
 
-//proc 3 will not ask for any memory
 void proc3(void)
 {
 	while (1) {
 		// just arriving from proc1 getting blocked
 		// set proc2 priority to MEDIUM
 		// proc2 should be called next
-#ifdef DEBUG_0
-		printf("changing priority of proc2 to MEDIUM\r\n");
-#endif /* DEBUG_0 */
 		proc_2_priority_change_ret_val = set_process_priority(2, MEDIUM);
 	}
 }
 
-//proc 4 asking for one block of memory -> get blocked
 void proc4(void)
 {
 	void* memblock1 = NULL;
