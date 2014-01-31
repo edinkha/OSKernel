@@ -18,6 +18,11 @@
 #ifdef DEBUG_0
 #include "uart_polling.h"
 #include "printf.h"
+#else
+	#ifdef DEBUG_1
+		#include "uart_polling.h"
+		#include "printf.h"
+	#endif /* DEBUG_1 */
 #endif /* DEBUG_0 */
 
 int main() 
@@ -26,6 +31,10 @@ int main()
 	SystemInit(); 
 #ifdef DEBUG_0
 	init_printf(NULL, putc);
+#else
+	#ifdef DEBUG_1
+		init_printf(NULL, putc);
+	#endif /* DEBUG_1 */
 #endif /* DEBUG_0 */
 	
 	/* start the RTX and built-in processes */

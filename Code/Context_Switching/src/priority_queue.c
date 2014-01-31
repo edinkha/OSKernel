@@ -52,25 +52,25 @@ void push(PriorityQueue* pqueue, QNode* node, int priority)
 
 int remove_at_priority(PriorityQueue* pqueue, QNode* node, int priority)
 {
-	Queue queue;
+	Queue* queue;
 	assert(pqueue != NULL);
-	queue = pqueue->queues[priority];
+	queue = &(pqueue->queues[priority]);
 
 	//If the queue is empty the node cannot be found
-	if (q_empty(&queue)) {
+	if (q_empty(queue)) {
 		return 0;
 	}
 
 	//Remove the node from its current queue
-	if (queue.first == node) {
-		queue.first = node->next;
+	if (queue->first == node) {
+		queue->first = node->next;
 		//If the new first node is null, the queue is now empty so set the last node to null as well
-		if (queue.first == NULL) {
-			queue.last = NULL;
+		if (queue->first == NULL) {
+			queue->last = NULL;
 		}
 	}
 	else {
-		QNode* iterator = queue.first;
+		QNode* iterator = queue->first;
 		while(iterator->next != node) {
 			if (iterator->next == NULL) {
 				return 0;
@@ -79,9 +79,9 @@ int remove_at_priority(PriorityQueue* pqueue, QNode* node, int priority)
 		}
 		//Getting here means the node was found and it is equal to iterator->next
 		iterator->next = node->next; //Replace the found/input node with the next node
-		if (queue.last == node) {
+		if (queue->last == node) {
 			//The iterator node is now the last node in the queue
-			queue.last = iterator;
+			queue->last = iterator;
 		}
 	}
 

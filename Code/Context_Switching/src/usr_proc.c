@@ -4,33 +4,33 @@ STEP-THROUGH OF TEST PROCS:
         ! - each of the blocks starts off with the lowest priority
         ! - proc1 requests 2 blocks and gets them
         ! - proc2 requests 2 blocks and gets them
-				! - proc2 sets proc1 priority to next highest (low)
-				! - proc1 requests another block and gets blocked
-				! - proc3 gets run and sets proc2 priority to 2nd highest (medium)
-				! - proc2 gets all proc priorities -- should be: pid1 => 2, pid2 => 1, pid3 => 3, pid4 => 3
-				! - proc2 releases a memblock
-				! - proc1 gets unblocked and releases processor
-				! - proc2 releases another memblock
-				! - since nothing is blocked, still running proc2
-				! - proc2 sets proc4 priority to highest (high)
-				! - proc4 gets all priorities -- should be: pid1 => 2, pid2 => 1, pid3 => 3, pid4 => 0
-				! - proc4 releases processor
-				! - proc2 requests 2 memblocks -> gets first, then blocked on second
-				! - proc4 is run again, requests a memblock and gets blocked
-				! - proc1 is run, releases memblock
-				! - since proc2 was blocked first, proc2 gets unblocked
-				! - proc2 releases memblock
-				! - proc4 is unblocked and sets proc1 priority to highest (high)
-				- proc1 prints results
-				-- TESTS END
-				
+		! - proc2 sets proc1 priority to next highest (low)
+		! - proc1 requests another block and gets blocked
+		! - proc3 gets run and sets proc2 priority to 2nd highest (medium)
+		! - proc2 gets all proc priorities -- should be: pid1 => 2, pid2 => 1, pid3 => 3, pid4 => 3
+		! - proc2 releases a memblock
+		! - proc1 gets unblocked and releases processor
+		! - proc2 releases another memblock
+		! - since nothing is blocked, still running proc2
+		! - proc2 sets proc4 priority to highest (high)
+		! - proc4 gets all priorities -- should be: pid1 => 2, pid2 => 1, pid3 => 3, pid4 => 0
+		! - proc4 releases processor
+		! - proc2 requests 2 memblocks -> gets first, then blocked on second
+		! - proc4 is run again, requests a memblock and gets blocked
+		! - proc1 is run, releases memblock
+		! - since proc2 was blocked first, proc2 gets unblocked
+		! - proc2 releases memblock
+		! - proc4 is unblocked and sets proc1 priority to highest (high)
+		- proc1 prints results
+		-- TESTS END
+		
 TOTAL TEST CHECKS:
 
-				- MEMORY ALLOC (block1-5_received)
-				- MEMORY DEALLOC (block1-5_released)
-				- PRIORITY CHECKS (all_proc_value_check_1&2)
-				- PRIORITY SET CHECK (proc_1&2&4_priority_change_ret_val)
-				- GENERAL SWITCH CHECK (switched_to_proc_2)
+		- MEMORY ALLOC (block1-5_received)
+		- MEMORY DEALLOC (block1-5_released)
+		- PRIORITY CHECKS (all_proc_value_check_1&2)
+		- PRIORITY SET CHECK (proc_1&2&4_priority_change_ret_val)
+		- GENERAL SWITCH CHECK (switched_to_proc_2)
 */
 
 
@@ -41,6 +41,9 @@ TOTAL TEST CHECKS:
 #ifdef DEBUG_0
 #include "printf.h"
 #endif /* DEBUG_0 */
+#ifdef DEBUG_1
+#include "printf.h"
+#endif /* DEBUG_1 */
 
 // HAVE NUM_TEST_PROCS = 4
 // HAVE NUM_HEAP_BLOCKS = 4
@@ -100,10 +103,10 @@ void proc1(void)
 	
 	// print test init statements
 	if (!results_printed) {
-#ifdef DEBUG_0
+#ifdef DEBUG_1
 		printf("G023_test: START\r\n");
 		printf("G023_test: total 5 tests\r\n");
-#endif  /* DEBUG_0 */
+#endif  /* DEBUG_1 */
 	}
 	
 	while (1) {
@@ -140,7 +143,7 @@ void proc1(void)
 #endif /* DEBUG_0 */
 		block5_released = release_memory_block(memblock3);
 
-#ifdef DEBUG_0
+#ifdef DEBUG_1
 		if (!results_printed) {
 			mem_alloc_result = block1_received && block2_received && block3_received && block4_received && block5_received;
 			mem_dealloc_result = block1_released && block2_released && block3_released && block4_released && block5_released;
@@ -187,14 +190,14 @@ void proc1(void)
 				num_tests_failed++;
 			}
 			
-			printf("G023_test: %d/5 tests OK", num_tests_passed);
-			printf("G023_test: %d/5 tests FAIL", num_tests_failed);
+			printf("G023_test: %d/5 tests OK\r\n", num_tests_passed);
+			printf("G023_test: %d/5 tests FAIL\r\n", num_tests_failed);
 
 			printf("G023_test: END\r\n");
 			
 			results_printed = 1;
-#endif  /* DEBUG_0 */
 		}
+#endif  /* DEBUG_1 */
 	}
 }
 
