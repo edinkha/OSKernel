@@ -183,7 +183,7 @@ PCB* get_proc_by_pid(int pid)
 	return NULL; //Error
 }
 
-int get_process_priority(int pid)
+int k_get_process_priority(int pid)
 {
 	PCB* pcb = get_proc_by_pid(pid);
 	if (pcb == NULL) {
@@ -192,7 +192,7 @@ int get_process_priority(int pid)
 	return pcb->m_priority;
 }
 
-int set_process_priority(int pid, int priority)
+int k_set_process_priority(int pid, int priority)
 {
 	PCB* pcb;
 	

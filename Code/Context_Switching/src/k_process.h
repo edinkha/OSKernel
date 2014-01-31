@@ -20,7 +20,7 @@
 
 void process_init(void);               /* initialize all procs in the system */
 PCB *scheduler(void);                  /* pick the pid of the next to run process */
-int k_release_process(void);           /* kernel release_process function */
+int k_release_processor(void);           /* kernel release_process function */
 
 extern U32 *alloc_stack(U32 size_b);   /* allocate stack for a process */
 extern void __rte(void);               /* pop exception stack frame */
@@ -28,8 +28,8 @@ extern void set_test_procs(void);      /* test process initial set up */
 
 PCB* get_proc_by_pid(int pid);			/* returns a pointer to the PCB with the given PID */
 
-int get_process_priority(int pid);
-int set_process_priority(int pid, int priority);
+int k_get_process_priority(int pid);
+int k_set_process_priority(int pid, int priority);
 
 void nullproc(void);
 
