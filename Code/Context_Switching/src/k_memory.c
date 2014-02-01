@@ -154,7 +154,7 @@ void *k_request_memory_block(void) {
 		k_release_processor();
 	}
 	#ifdef DEBUG_0 
-		printf("k_request_memory_block: returning new block...\r\n", gp_current_process->m_pid);
+		printf("k_request_memory_block: returning new block...\r\n");
 	#endif
 	//Pop a memory block off the heap and return a pointer to it
 	return (void *) pop_front(heap);

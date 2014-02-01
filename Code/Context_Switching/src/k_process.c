@@ -41,7 +41,7 @@ void nullproc(void)
 }
 
 /**
- * @biref: initialize all processes in the system
+ * @brief: initialize all processes in the system
  * NOTE: We assume there are only two user processes in the system in this example.
  */
 void process_init() 
@@ -87,13 +87,12 @@ void process_init()
 	}
 }
 
-/*@brief: scheduler, pick the pid of the next to run process
- *@return: PCB pointer of the next to run process
- *         NULL if error happens
- *POST: if gp_current_process was NULL, then it gets set to pcbs[0].
- *      No other effect on other global variables.
+/**
+ * @brief: scheduler, picks the next to run process
+ * @return: PCB pointer of the next to run process
+ * POST: if gp_current_process was NULL, then it gets set to pcbs[0].
+ *       No other effect on other global variables.
  */
-
 PCB *scheduler(void)
 {
 	PCB* next_pcb = (PCB *)pop(ready_pq);
@@ -106,11 +105,13 @@ PCB *scheduler(void)
 	}
 }
 
-/* 
+/**
  * @brief: Configures the old PCB if it was RUNNING or INTERRUPTED by making it READY
  */
 void configure_old_pcb(PCB* p_pcb_old)
 {
+	p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
+
 	//If the old process wasn't running or interrupted, there is nothing to configure, so return
 	if (p_pcb_old->m_state != RUNNING && p_pcb_old->m_state != INTERRUPTED) {
 		return;
@@ -124,20 +125,18 @@ void configure_old_pcb(PCB* p_pcb_old)
 	
 }
 
-/* @brief: switch out old pcb (p_pcb_old), run the new pcb (gp_current_process)
+/**
+ * @brief: switch out old pcb (p_pcb_old), run the new pcb (gp_current_process)
  * @param: p_pcb_old, the old pcb that was in RUNNING
  * @return: RTX_OK upon success
  *          RTX_ERR upon failure
- * PRE:  p_pcb_old and gp_current_process are pointing to valid PCBs.
- * POST: if gp_current_process was NULL, then it gets set to pcbs[0].
- *       No other effect on other global variables.
+ * PRE: p_pcb_old and gp_current_process are pointing to valid PCBs.
  */
 int process_switch(PCB* p_pcb_old)
 {
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-			p_pcb_old->mp_sp = (U32*)__get_MSP();	//Save the old process's sp
-			configure_old_pcb(p_pcb_old);			//Configure the old PCB
+			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
 		__set_MSP((U32) gp_current_process->mp_sp);
@@ -154,8 +153,7 @@ int process_switch(PCB* p_pcb_old)
 			return RTX_ERR;
 		}
 		
-		p_pcb_old->mp_sp = (U32*)__get_MSP();	//Save the old process's sp
-		configure_old_pcb(p_pcb_old);			//Configure the old PCB
+		configure_old_pcb(p_pcb_old); //Configure the old PCB
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
