@@ -25,11 +25,20 @@
 
 /* ----- Global Variables ----- */
 PCB **gp_pcbs;                  /* array of pcbs */
-PCB *gp_current_process = NULL; /* always point to the current RUN process */
+PCB *gp_current_process = NULL; /* always point to the current RUNNING process */
 
 /* process initialization table */
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
+
+
+/* The null process */
+void nullproc(void)
+{
+	while(1) {
+		k_release_processor();
+	}
+}
 
 /**
  * @biref: initialize all processes in the system
@@ -97,8 +106,26 @@ PCB *scheduler(void)
 	}
 }
 
+/* 
+ * @brief: Configures the old PCB if it was RUNNING or INTERRUPTED by making it READY
+ */
+void configure_old_pcb(PCB* p_pcb_old)
+{
+	//If the old process wasn't running or interrupted, there is nothing to configure, so return
+	if (p_pcb_old->m_state != RUNNING && p_pcb_old->m_state != INTERRUPTED) {
+		return;
+	}
+
+	//Set the old process's state to READY and put itback in the ready queue if it's not the null process
+	p_pcb_old->m_state = READY;
+	if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
+		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
+	}
+	
+}
+
 /* @brief: switch out old pcb (p_pcb_old), run the new pcb (gp_current_process)
- * @param: p_pcb_old, the old pcb that was in RUN
+ * @param: p_pcb_old, the old pcb that was in RUNNING
  * @return: RTX_OK upon success
  *          RTX_ERR upon failure
  * PRE:  p_pcb_old and gp_current_process are pointing to valid PCBs.
@@ -109,14 +136,10 @@ int process_switch(PCB* p_pcb_old)
 {
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-			p_pcb_old->m_state = READY;
-			p_pcb_old->mp_sp = (U32*) __get_MSP();
-			// put the old process back in the ready queue if it's not the null process
-			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
-				push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
-			}
+			p_pcb_old->mp_sp = (U32*)__get_MSP();	//Save the old process's sp
+			configure_old_pcb(p_pcb_old);			//Configure the old PCB
 		}
-		gp_current_process->m_state = RUN;
+		gp_current_process->m_state = RUNNING;
 		__set_MSP((U32) gp_current_process->mp_sp);
 		__rte();  // pop exception stack frame from the stack for a new processes
 	}
@@ -131,27 +154,20 @@ int process_switch(PCB* p_pcb_old)
 			return RTX_ERR;
 		}
 		
-		p_pcb_old->mp_sp = (U32*) __get_MSP();  // save the old process's sp
+		p_pcb_old->mp_sp = (U32*)__get_MSP();	//Save the old process's sp
+		configure_old_pcb(p_pcb_old);			//Configure the old PCB
 		
-		//If the old process isn't blocked or waiting for a message, set it to ready
-		if (p_pcb_old->m_state != BLOCKED && p_pcb_old->m_state != WAIT_FOR_MSG) {
-			p_pcb_old->m_state = READY;
-			//Put the old process back in the ready queue if it's not the null process
-			if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
-				push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
-			}
-		}
-
 		//Run the new current process
-		gp_current_process->m_state = RUN;
-		__set_MSP((U32) gp_current_process->mp_sp); //switch to the new proc's stack
+		gp_current_process->m_state = RUNNING;
+		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 	}
 	
 	return RTX_OK;
 }
+
 /**
- * @brief release_processor(). 
- * @return RTX_ERR on error and zero on success
+ * @brief: release_processor(). 
+ * @return: RTX_ERR on error and zero on success
  * POST: gp_current_process gets updated to next to run process
  */
 int k_release_processor(void)
@@ -172,6 +188,10 @@ int k_release_processor(void)
 	return RTX_OK;
 }
 
+/**
+ * @brief: Finds the PCB with the given PID and returns a pointer to it
+ * @return: A pionter to the PCB witht the given PID
+ */
 PCB* get_proc_by_pid(int pid)
 {
 	int i;
@@ -224,11 +244,4 @@ int k_set_process_priority(int pid, int priority)
 	}
 	
 	return RTX_OK;
-}
-
-void nullproc(void)
-{
-	while(1) {
-		k_release_processor();
-	}
 }

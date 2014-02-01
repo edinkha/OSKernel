@@ -40,7 +40,7 @@ typedef enum {
 	READY,
 	BLOCKED,
 	WAIT_FOR_MSG,
-	RUN,
+	RUNNING,
 	INTERRUPTED
 } PROC_STATE_E;  
 
