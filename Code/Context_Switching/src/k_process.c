@@ -110,8 +110,6 @@ PCB *scheduler(void)
  */
 void configure_old_pcb(PCB* p_pcb_old)
 {
-	p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
-
 	//If the old process wasn't running or interrupted, there is nothing to configure, so return
 	if (p_pcb_old->m_state != RUNNING && p_pcb_old->m_state != INTERRUPTED) {
 		return;
@@ -136,6 +134,7 @@ int process_switch(PCB* p_pcb_old)
 {
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
+			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
@@ -153,6 +152,7 @@ int process_switch(PCB* p_pcb_old)
 			return RTX_ERR;
 		}
 		
+		p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 		configure_old_pcb(p_pcb_old); //Configure the old PCB
 		
 		//Run the new current process
