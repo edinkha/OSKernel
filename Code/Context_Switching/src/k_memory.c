@@ -187,9 +187,7 @@ int k_release_memory_block(void *p_mem_blk) {
 	#endif
 		push(ready_pq, to_unblock, ((PCB *)to_unblock)->m_priority);
 		// handle preemption
-		if (((PCB*)top(ready_pq))->m_priority < gp_current_process->m_priority) {
-			k_release_processor();
-		}
+		k_release_processor();
 	}	
 	
 	return RTX_OK;

@@ -95,7 +95,14 @@ void process_init()
  */
 PCB *scheduler(void)
 {
-	PCB* next_pcb = (PCB *)pop(ready_pq);
+	PCB* next_pcb;
+	PCB* top_pcb = (PCB *)top(ready_pq);
+	
+	if (top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) {
+		next_pcb = (PCB *)pop(ready_pq);
+	} else {
+		next_pcb = gp_current_process;
+	}
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
@@ -238,12 +245,8 @@ int k_set_process_priority(int pid, int priority)
 			push(ready_pq, (QNode*)pcb, priority);
 		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
+			k_release_processor();
 			break;
-	}
-	
-	topNode = (PCB*)top(ready_pq);
-	if (topNode != NULL && topNode->m_priority < gp_current_process->m_priority) {
-		k_release_processor();
 	}
 	
 	return RTX_OK;
