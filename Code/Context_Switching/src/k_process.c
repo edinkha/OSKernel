@@ -98,9 +98,10 @@ PCB *scheduler(void)
 	PCB* next_pcb;
 	PCB* top_pcb = (PCB *)top(ready_pq);
 	
-	if (top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) {
+	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == WAIT_FOR_MSG) {
 		next_pcb = (PCB *)pop(ready_pq);
-	} else {
+	} 
+	else {
 		next_pcb = gp_current_process;
 	}
 	
@@ -220,7 +221,6 @@ int k_get_process_priority(int pid)
 int k_set_process_priority(int pid, int priority)
 {
 	PCB* pcb;
-	PCB* topNode;
 	
 	if (priority < 0 || priority > 3) {
 		return RTX_ERR;
