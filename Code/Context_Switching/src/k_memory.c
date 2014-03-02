@@ -155,10 +155,7 @@ void *k_request_memory_block(void) {
 	#endif
 		gp_current_process->m_state = BLOCKED;
 		push(blocked_memory_pq, (QNode *) gp_current_process, gp_current_process->m_priority);
-		// handle preemption
-		if (((PCB*)top(ready_pq))->m_priority < gp_current_process->m_priority) {
-			k_release_processor();
-		}
+		k_release_processor();
 	}
 	#ifdef DEBUG_0 
 		printf("k_request_memory_block: returning new block...\r\n");
