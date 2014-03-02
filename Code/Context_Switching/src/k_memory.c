@@ -17,7 +17,8 @@ U32 *gp_stack; /* The last allocated stack low address. 8 bytes aligned */
 	       /* stack grows down. Fully decremental stack */
 ForwardList* heap; // Pointer to the heap
 PriorityQueue* ready_pq; // Ready queue to hold the PCBs
-Queue* blocked_q; // Blocked queue to hold the blocked PCBs
+PriorityQueue* blocked_memory_pq; // Blocked priority queue to hold PCBs blocked due to memory
+PriorityQueue* blocked_waiting_pq; // Blocked priority queue to hold PCBs blocked due to waiting for a message
 
 /**
  * @brief: Initialize RAM as follows:
@@ -76,14 +77,18 @@ void memory_init(void)
 		--gp_stack; 
 	}
 	
-	/* allocate memory for ready and blocked queue */
+	/* allocate memory for ready and blocked queues */
 	ready_pq = (PriorityQueue *)p_end;
 	p_end += sizeof(PriorityQueue);
 	init_pq(ready_pq);
 	
-	blocked_q = (Queue *)p_end;
-	p_end += sizeof(Queue);
-	init_q(blocked_q);
+	blocked_memory_pq = (PriorityQueue *)p_end;
+	p_end += sizeof(PriorityQueue);
+	init_pq(blocked_memory_pq);
+	
+	blocked_waiting_pq = (PriorityQueue *)p_end;
+	p_end += sizeof(PriorityQueue);
+	init_pq(blocked_waiting_pq);
   
 	/* allocate memory for the heap */
 #ifdef DEBUG_0
@@ -149,9 +154,11 @@ void *k_request_memory_block(void) {
 		printf("process %d blocked \r\n", gp_current_process->m_pid);
 	#endif
 		gp_current_process->m_state = BLOCKED;
-		enqueue(blocked_q, (QNode *) gp_current_process);
+		push(blocked_memory_pq, (QNode *) gp_current_process, gp_current_process->m_priority);
 		// handle preemption
-		k_release_processor();
+		if (((PCB*)top(ready_pq))->m_priority < gp_current_process->m_priority) {
+			k_release_processor();
+		}
 	}
 	#ifdef DEBUG_0 
 		printf("k_request_memory_block: returning new block...\r\n");
@@ -175,15 +182,17 @@ int k_release_memory_block(void *p_mem_blk) {
 
 	//If the blocked queue is not empty, take the first process and put it on the ready queue
 	//(since now there is memory available for that process to continue)
-	if (!q_empty(blocked_q)) {
-		to_unblock = dequeue(blocked_q);
+	if (!pq_empty(blocked_memory_pq)) {
+		to_unblock = pop(blocked_memory_pq);
 		((PCB *)to_unblock)->m_state = READY;
 	#ifdef DEBUG_0 
 		printf("unblocking process ID %x\r\n", ((PCB *)to_unblock)->m_pid);
 	#endif
 		push(ready_pq, to_unblock, ((PCB *)to_unblock)->m_priority);
 		// handle preemption
-		k_release_processor();
+		if (((PCB*)top(ready_pq))->m_priority < gp_current_process->m_priority) {
+			k_release_processor();
+		}
 	}	
 	
 	return RTX_OK;

@@ -2,6 +2,7 @@
  * @file:   priority_queue.c
  * @brief:  Priority Queue C file
  * @author: Nathan Woltman
+ * @author: Justin Gagne
  * @date:   2014/01/26
  */
 
@@ -21,6 +22,36 @@ void init_pq(PriorityQueue* pqueue)
 	for (i = 0; i < NUM_PRIORITIES; i++) {
 		pqueue->queues[i].first = pqueue->queues[i].last = NULL;
 	}
+}
+
+int pq_empty(PriorityQueue* pqueue) {
+	int i;
+	assert(pqueue != NULL);
+	for (i = 0; i < NUM_PRIORITIES; i++) {
+		if (pqueue->queues[i].first != NULL) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+QNode* top(PriorityQueue* pqueue)
+{
+	int i;
+	Queue* queue;
+	
+	assert(pqueue != NULL);
+	
+	//Loop through the queues by priority (0 is highest)
+	//and return the first element of the first non-empty queue
+	for (i = 0; i < NUM_PRIORITIES; i++) {
+		queue = &(pqueue->queues[i]);
+		if (!q_empty(queue)) {
+			return queue->first;
+		}
+	}
+	//All queues were empty so return a null pointer
+	return NULL;
 }
 
 QNode* pop(PriorityQueue* pqueue)

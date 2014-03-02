@@ -2,6 +2,7 @@
  * @file:   priority_queue.h
  * @brief:  Priority Queue header file
  * @author: Nathan Woltman
+ * @author: Justin Gagne
  * @date:   2014/01/26
  *
  * NOTE:
@@ -28,6 +29,19 @@ typedef struct priority_queue {
  * @brief: Initializes the given PriorityQueue
  */
 void init_pq(PriorityQueue* pqueue);
+
+/**
+ * @brief: Determines whether or not the priority queue is empty
+ * @return: 1 if the priority queue is empty, 0 otherwise
+ */
+int pq_empty(PriorityQueue* pqueue);
+
+/**
+ * @brief: Gets the highest priority node in the queue without removing it from the queue
+ * @return: QNode pointer of the top node
+						NULL if the queue is empty
+ */
+QNode* top(PriorityQueue* pqueue);
 
 /**
  * @brief: Gets the highest priority node in the queue and removes the node from the queue

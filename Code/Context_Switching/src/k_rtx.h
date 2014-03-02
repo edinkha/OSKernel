@@ -17,8 +17,8 @@
 #define RTX_OK  0
 
 #define NULL 0
-#define NUM_TEST_PROCS 4
-#define NUM_PROCS 5
+#define NUM_TEST_PROCS 6
+#define NUM_PROCS 7
 
 #define USR_SZ_MEM_BLOCK 0x80	/* heap memory block size is 128B     */
 
@@ -72,7 +72,8 @@ typedef struct mem_block
 	U32 *next_block;
 } MEM_BLOCK;
 
-extern Queue *blocked_q;
+extern PriorityQueue *blocked_memory_pq;
+extern PriorityQueue *blocked_waiting_pq;
 extern PriorityQueue *ready_pq;
 
 #endif // ! K_RTX_H_

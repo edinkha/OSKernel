@@ -213,6 +213,7 @@ int k_get_process_priority(int pid)
 int k_set_process_priority(int pid, int priority)
 {
 	PCB* pcb;
+	PCB* topNode;
 	
 	if (priority < 0 || priority > 3) {
 		return RTX_ERR;
@@ -237,8 +238,12 @@ int k_set_process_priority(int pid, int priority)
 			push(ready_pq, (QNode*)pcb, priority);
 		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
-			k_release_processor();
 			break;
+	}
+	
+	topNode = (PCB*)top(ready_pq);
+	if (topNode != NULL && topNode->m_priority < gp_current_process->m_priority) {
+		k_release_processor();
 	}
 	
 	return RTX_OK;
