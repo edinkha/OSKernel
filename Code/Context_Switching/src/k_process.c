@@ -93,14 +93,14 @@ void process_init()
  * POST: if gp_current_process was NULL, then it gets set to pcbs[0].
  *       No other effect on other global variables.
  */
-PCB *scheduler(void)
+PCB* scheduler(void)
 {
 	PCB* next_pcb;
-	PCB* top_pcb = (PCB *)top(ready_pq);
+	PCB* top_pcb = (PCB*)top(ready_pq);
 	
 	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == WAIT_FOR_MSG) {
-		next_pcb = (PCB *)pop(ready_pq);
-	} 
+		next_pcb = (PCB*)pop(ready_pq);
+	}
 	else {
 		next_pcb = gp_current_process;
 	}
@@ -108,7 +108,8 @@ PCB *scheduler(void)
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
 		return gp_pcbs[NUM_TEST_PROCS];
-	} else {
+	}
+	else {
 		return next_pcb;
 	}
 }

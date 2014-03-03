@@ -38,14 +38,14 @@ int pq_empty(PriorityQueue* pqueue);
 
 /**
  * @brief: Gets the highest priority node in the queue without removing it from the queue
- * @return: QNode pointer of the top node
-						NULL if the queue is empty
+ * @return: QNode pointer to the top node
+			NULL if the queue is empty
  */
 QNode* top(PriorityQueue* pqueue);
 
 /**
  * @brief: Gets the highest priority node in the queue and removes the node from the queue
- * @return: QNode pointer of the popped node
+ * @return: QNode pointer to the popped node
  *          NULL if the queue is empty
  */
 QNode* pop(PriorityQueue* pqueue);

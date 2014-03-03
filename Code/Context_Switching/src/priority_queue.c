@@ -24,7 +24,8 @@ void init_pq(PriorityQueue* pqueue)
 	}
 }
 
-int pq_empty(PriorityQueue* pqueue) {
+int pq_empty(PriorityQueue* pqueue)
+{
 	int i;
 	assert(pqueue != NULL);
 	for (i = 0; i < NUM_PRIORITIES; i++) {
@@ -86,12 +87,12 @@ int remove_at_priority(PriorityQueue* pqueue, QNode* node, int priority)
 	Queue* queue;
 	assert(pqueue != NULL);
 	queue = &(pqueue->queues[priority]);
-
+	
 	//If the queue is empty the node cannot be found
 	if (q_empty(queue)) {
 		return 0;
 	}
-
+	
 	//Remove the node from its current queue
 	if (queue->first == node) {
 		queue->first = node->next;
@@ -102,7 +103,7 @@ int remove_at_priority(PriorityQueue* pqueue, QNode* node, int priority)
 	}
 	else {
 		QNode* iterator = queue->first;
-		while(iterator->next != node) {
+		while (iterator->next != node) {
 			if (iterator->next == NULL) {
 				return 0;
 			}
@@ -115,6 +116,6 @@ int remove_at_priority(PriorityQueue* pqueue, QNode* node, int priority)
 			queue->last = iterator;
 		}
 	}
-
+	
 	return 1; //Success
 }
