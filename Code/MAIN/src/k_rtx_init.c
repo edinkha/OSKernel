@@ -6,9 +6,9 @@
  */
 
 #include "k_rtx_init.h"
-#include "timer.h"
 #include "uart.h"
 #include "uart_polling.h"
+#include "timer.h"
 #include "k_memory.h"
 #include "k_process.h"
 
@@ -19,9 +19,9 @@ void k_rtx_init(void)
 				volatile uint8_t sec = 0;
 	
         __disable_irq();
-				timer_init(0);    // initialize timer 0; might need to be moved down later
 				uart_irq_init(0); // uart0, interrupt-drive
         uart1_init();     // uart1, polling
+				timer_init(0);    // initialize timer 0; might need to be moved down later
         memory_init();
         process_init();
         __enable_irq();
