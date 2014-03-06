@@ -136,7 +136,6 @@
             <RestoreMemoryDisplay>1</RestoreMemoryDisplay>
             <RestoreFunctions>0</RestoreFunctions>
             <RestoreToolbox>1</RestoreToolbox>
-            <RestoreTracepoints>1</RestoreTracepoints>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
           <TargetSelection>0</TargetSelection>
@@ -421,6 +420,16 @@
               <FileType>1</FileType>
               <FilePath>.\src\main_svc.c</FilePath>
             </File>
+            <File>
+              <FileName>timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>uart_irq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\uart_irq.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -515,6 +524,21 @@
               <FileName>priority_queue.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\src\priority_queue.h</FilePath>
+            </File>
+            <File>
+              <FileName>timer.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\timer.h</FilePath>
+            </File>
+            <File>
+              <FileName>uart.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\uart.h</FilePath>
+            </File>
+            <File>
+              <FileName>uart_def.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\uart_def.h</FilePath>
             </File>
           </Files>
         </Group>
