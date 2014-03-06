@@ -11,7 +11,10 @@
 #ifdef DEBUG_0
 #include "printf.h"
 #endif
-
+#ifdef DEBUG_HK
+#include <assert.h>
+#include "k_rtx.h"
+#endif
 
 uint8_t g_buffer[]= "You Typed a Q\n\r";
 uint8_t *gp_buffer = g_buffer;
@@ -22,6 +25,34 @@ uint8_t g_char_out;
 extern uint32_t g_switch_flag;
 
 extern int k_release_processor(void);
+
+#ifdef DEBUG_HK
+/**
+ * @brief: Print all of the PCB process_ids in the priority queue, along with their priorities
+ */
+void print(PriorityQueue* pqueue)
+{
+	int i;
+	char str[5];
+	QNode* cur_node;
+	assert(pqueue != NULL);
+	for (i = 0; i < NUM_PRIORITIES; i++) {
+		cur_node = pqueue->queues[i].first;
+		while (cur_node != NULL) {
+			uart0_put_string("Process ID = ");
+			sprintf(str, "%d", ((PCB*)cur_node)->m_pid);
+			uart0_put_string(str);
+			uart0_put_string("\n\r");
+			uart0_put_string("Process Priority = ");
+			sprintf(str, "%d", ((PCB*)cur_node)->m_priority);
+			uart0_put_string(str);
+			uart0_put_string("\n\r");
+			cur_node = cur_node->next;
+		}
+	}
+}
+#endif
+
 /**
  * @brief: initialize the n_uart
  * NOTES: It only supports UART0. It can be easily extended to support UART1 IRQ.
@@ -96,7 +127,7 @@ int uart_irq_init(int n_uart) {
         */
 	
 	/* Step 3a: DLAB=1, 8N1 */
-	pUart->LCR = UART_8N1; /* see uart.h file */ 
+	pUart->LCR = UART_8N1; /* see uart.h file (0x83) */
 
 	/* Step 3b: 115200 baud rate @ 25.0 MHZ PCLK */
 	pUart->DLM = 0; /* see table 274, pg302 in LPC17xx_UM */
@@ -165,9 +196,12 @@ __asm void UART0_IRQHandler(void)
 {
 	PRESERVE8
 	IMPORT c_UART0_IRQHandler
+	; NOTE: remove next line most likely, but will need for timer handler
 	IMPORT k_release_processor
 	PUSH{r4-r11, lr}
 	BL c_UART0_IRQHandler
+	; NOTE: Look at code in UART_IRQ folder -- this part can likely be omitted because UART i-process doesnt need preemption
+	; However, will likely need it for the timer interrupt handler
 	LDR R4, =__cpp(&g_switch_flag)
 	LDR R4, [R4]
 	MOV R5, #0     
@@ -175,6 +209,7 @@ __asm void UART0_IRQHandler(void)
 	BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
 	BL k_release_processor  ; otherwise (i.e g_switch_flag == 1, then switch to the other process)
 RESTORE
+	; END PART that can be removed
 	POP{r4-r11, pc}
 } 
 /**
@@ -199,6 +234,22 @@ void c_UART0_IRQHandler(void)
 		uart1_put_char(g_char_in);
 		uart1_put_string("\n\r");
 #endif // DEBUG_0
+		
+#ifdef DEBUG_HK
+		if (g_char_in == '!') {
+			uart0_put_string("! hotkey entered - printing processes on ready queue\n\r");
+			print(ready_pq);
+		}
+		else if (g_char_in == '@') {
+			uart0_put_string("@ hotkey entered - printing processes on blocked on memory queue\n\r");
+			print(blocked_memory_pq);
+		}
+		else if (g_char_in == '#') {
+			uart0_put_string("# hotkey entered - printing processes on blocked on receive queue\n\r");
+			print(blocked_waiting_pq);
+		}
+#endif // DEBUG_HK
+		
 		g_buffer[12] = g_char_in; // nasty hack
 		g_send_char = 1;
 		

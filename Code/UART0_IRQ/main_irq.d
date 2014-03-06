@@ -1,0 +1,12 @@
+main_irq.o: src\main_irq.c
+main_irq.o: C:\Keil\ARM\Inc\NXP\LPC17xx\LPC17xx.h
+main_irq.o: C:\Keil\ARM\CMSIS\Include\core_cm3.h
+main_irq.o: C:\Keil\ARM\RV31\Inc\stdint.h
+main_irq.o: C:\Keil\ARM\CMSIS\Include\core_cmInstr.h
+main_irq.o: C:\Keil\ARM\CMSIS\Include\core_cmFunc.h
+main_irq.o: C:\Keil\ARM\Inc\NXP\LPC17xx\system_LPC17xx.h
+main_irq.o: src\uart.h
+main_irq.o: src\uart_def.h
+main_irq.o: src\uart_polling.h
+main_irq.o: src\printf.h
+main_irq.o: C:\Keil\ARM\RV31\Inc\stdarg.h

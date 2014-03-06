@@ -1,0 +1,4 @@
+--cpu Cortex-M3 "startup_lpc17xx.o" "uart_polling.o" "uart_irq.o" "system_lpc17xx.o" "printf.o" "main_irq.o" --strict --scatter "UART_irq.sct" 
+--summary_stderr --info summarysizes --map --xref --callgraph --symbols 
+--info sizes --info totals --info unused --info veneers 
+ --list ".\UART_irq.map" -o UART_irq.axf

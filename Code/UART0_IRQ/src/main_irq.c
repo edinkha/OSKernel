@@ -34,7 +34,7 @@ int main()
 
 	pUart = (LPC_UART_TypeDef *) LPC_UART0;
 	
-	while( 1 ) {
+	//while( 1 ) {
 		
 		if (g_send_char == 0) {
 			/* Enable RBR, THRE is disabled */
@@ -44,6 +44,6 @@ int main()
 			pUart->IER = IER_THRE | IER_RLS | IER_RBR;
 		}
      
-	}
+	//}
 }
 
