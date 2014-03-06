@@ -27,6 +27,10 @@
 PCB **gp_pcbs;                  /* array of pcbs */
 PCB *gp_current_process = NULL; /* always point to the current RUNNING process */
 
+U32 g_switch_flag = 0;          /* whether to continue to run the process before the UART receive interrupt */
+                                /* 1 means to switch to another process, 0 means to continue the current process */
+																/* this value will be set by UART handler */
+
 /* process initialization table */
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
