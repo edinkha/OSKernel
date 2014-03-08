@@ -35,6 +35,10 @@ U32 g_switch_flag = 0;          /* whether to continue to run the process before
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
+Queue* receiving_q; 		// a receiving queue
+Queue* env_q;
+Queue* msg_q;
+
 
 /* The null process */
 void nullproc(void)
@@ -255,4 +259,33 @@ int k_set_process_priority(int pid, int priority)
 	}
 	
 	return RTX_OK;
+}
+
+//sending the message
+int send_message(int pid, void *p_msg){
+
+	PCB* pcb_t;
+
+	pcb_t = get_proc_by_pid(pid);
+
+	//enqueue env onto the msg_queue of receiving_proc;
+
+	//we have to create a queue for each proc.. each time that process receives a call, a message is removed from that queue
+	enqueue(msg_q, p_msg);
+	
+	//I am not sure about this line. So we want to enqueue an entire queue component into envelope queue, but it only takes in
+	//Qnodes
+	enqueue(env_q,  msg_q->first);
+
+	if(pcb_t->m_state == BLOCKED_ON_RECEIVE){
+		pcb_t->m_state = READY;
+		enqueue (receiving_q,(Qnode*) pcb_t->m_pid ) ;
+	}
+
+
+}
+
+void *k_receive_message(int *p_pid){
+
+
 }
