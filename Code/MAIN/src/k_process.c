@@ -65,12 +65,14 @@ void process_init()
 		g_proc_table[i].m_priority = g_test_procs[i].m_priority;
 		g_proc_table[i].m_stack_size = g_test_procs[i].m_stack_size;
 		g_proc_table[i].mpf_start_pc = g_test_procs[i].mpf_start_pc;
+		g_proc_table[i].m_msg_q = g_test_procs[i].m_msg_q;
 	}
 	// null process initialization
 	g_proc_table[NUM_TEST_PROCS].m_pid = (U32)(0);
 	g_proc_table[NUM_TEST_PROCS].m_priority = 4;
 	g_proc_table[NUM_TEST_PROCS].m_stack_size = 0x100;
 	g_proc_table[NUM_TEST_PROCS].mpf_start_pc = &nullproc;
+	g_proc_table[NUM_TEST_PROCS].m_msg_q = &nullproc;
   
 	/* initilize exception stack frame (i.e. initial context) for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
@@ -270,12 +272,7 @@ int send_message(int pid, void *p_msg){
 
 	//enqueue env onto the msg_queue of receiving_proc;
 
-	//we have to create a queue for each proc.. each time that process receives a call, a message is removed from that queue
-	enqueue(msg_q, p_msg);
-	
-	//I am not sure about this line. So we want to enqueue an entire queue component into envelope queue, but it only takes in
-	//Qnodes
-	enqueue(env_q,  msg_q->first);
+	enqueue(pcb_t->m_msg_q, (Qnode*) p_msg);
 
 	if(pcb_t->m_state == BLOCKED_ON_RECEIVE){
 		pcb_t->m_state = READY;
@@ -286,6 +283,20 @@ int send_message(int pid, void *p_msg){
 }
 
 void *k_receive_message(int *p_pid){
+	PCB* pcb_t;
 
+	pcb_t = get_proc_by_pid(&p_pid);
+	
+	while(pcb_t->m_msg_q == NULL){
+		pcb_t->m_state == BLOCKED_ON_RECEIVE;
+		k_release_processor();
+	}
 
+	void *env = dequeue(pcb_t->m_msg_q->first);
+	return env;
 }
+
+
+
+
+
