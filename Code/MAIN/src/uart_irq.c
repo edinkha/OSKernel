@@ -16,7 +16,7 @@
 #include "k_rtx.h"
 #endif
 
-uint8_t g_buffer[]= "You Typed a Q\n\r";
+uint8_t g_buffer[];
 uint8_t *gp_buffer = g_buffer;
 uint8_t g_send_char = 0;
 uint8_t g_char_in;
@@ -249,7 +249,12 @@ void c_UART0_IRQHandler(void)
 			print(blocked_waiting_pq);
 		}
 #endif // DEBUG_HK
-		
+// 		if (g_char_in == '\n') {
+// 			
+// 		}
+// 		else {
+// 			g_buffer += g_char_in;
+// 		}
 		g_buffer[12] = g_char_in; // nasty hack
 		g_send_char = 1;
 		
