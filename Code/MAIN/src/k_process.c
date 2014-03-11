@@ -35,11 +35,6 @@ U32 g_switch_flag = 0;          /* whether to continue to run the process before
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
-Queue* receiving_q; 		// a receiving queue
-Queue* env_q;
-Queue* msg_q;
-
-
 /* The null process */
 void nullproc(void)
 {
@@ -65,14 +60,12 @@ void process_init()
 		g_proc_table[i].m_priority = g_test_procs[i].m_priority;
 		g_proc_table[i].m_stack_size = g_test_procs[i].m_stack_size;
 		g_proc_table[i].mpf_start_pc = g_test_procs[i].mpf_start_pc;
-		g_proc_table[i].m_msg_q = g_test_procs[i].m_msg_q;
 	}
 	// null process initialization
 	g_proc_table[NUM_TEST_PROCS].m_pid = (U32)(0);
 	g_proc_table[NUM_TEST_PROCS].m_priority = 4;
 	g_proc_table[NUM_TEST_PROCS].m_stack_size = 0x100;
 	g_proc_table[NUM_TEST_PROCS].mpf_start_pc = &nullproc;
-	g_proc_table[NUM_TEST_PROCS].m_msg_q = &nullproc;
   
 	/* initilize exception stack frame (i.e. initial context) for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
@@ -207,7 +200,7 @@ int k_release_processor(void)
 
 /**
  * @brief: Finds the PCB with the given PID and returns a pointer to it
- * @return: A pionter to the PCB witht the given PID
+ * @return: A pointer to the PCB with the given PID
  */
 PCB* get_proc_by_pid(int pid)
 {
@@ -263,37 +256,72 @@ int k_set_process_priority(int pid, int priority)
 	return RTX_OK;
 }
 
-//sending the message
-int send_message(int pid, void *p_msg){
-
-	PCB* pcb_t;
-
-	pcb_t = get_proc_by_pid(pid);
-
-	//enqueue env onto the msg_queue of receiving_proc;
-
-	enqueue(pcb_t->m_msg_q, (Qnode*) p_msg);
-
-	if(pcb_t->m_state == BLOCKED_ON_RECEIVE){
-		pcb_t->m_state = READY;
-		enqueue (receiving_q,(Qnode*) pcb_t->m_pid ) ;
-	}
-
-
-}
-
-void *k_receive_message(int *p_pid){
-	PCB* pcb_t;
-
-	pcb_t = get_proc_by_pid(&p_pid);
+/**
+ * @brief: Sends message_envelope to process_id (i.e. add the message defined at message_envelope to process_id's message queue
+ * @return: RTX_OK upon success
+ *          RTX_ERR upon failure
+ */
+int send_message(int process_id, void *message_envelope){
+	PCB* receiving_proc;
 	
-	while(pcb_t->m_msg_q == NULL){
-		pcb_t->m_state == BLOCKED_ON_RECEIVE;
+	// atomic(on) -- i.e. prevent interrupts from affecting state
+	__disable_irq();
+	
+	// error checking
+	if (message_envelope == NULL || process_id < 0 || process_id > 15) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
+	// TODO: using hack once malloc has been changed, set sender and receiver proc_ids in the message_envelope memblock
+	
+	
+	receiving_proc = get_proc_by_pid(process_id);
+
+	// error checking
+	if (receiving_proc == NULL) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
+	// enqueue message_envelope onto the message_q of receiving_proc;
+	enqueue(receiving_proc->m_message_q, (QNode *) message_envelope);
+
+	if (receiving_proc->m_state == WAIT_FOR_MSG) {
+		receiving_proc->m_state = READY;
+		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
+		// handle preemption
 		k_release_processor();
 	}
 
-	void *env = dequeue(pcb_t->m_msg_q->first);
-	return env;
+	// atomic(off)
+	__enable_irq();
+	
+	return RTX_OK;
+}
+
+/**
+ * NOTE: BLOCKING receive
+ * @brief: Returns pointer to waiting message envelope, or blocks until a message is received
+ * @return: pointer to message envelope
+ */
+void *k_receive_message(int *sender_id){	
+	void *message_envelope;
+	// atomic(on)
+	__disable_irq();
+	
+	while (q_empty(gp_current_process->m_message_q)) {
+		gp_current_process->m_state == WAIT_FOR_MSG;
+		push(blocked_waiting_pq, (QNode *) gp_current_process, gp_current_process->m_priority);
+		k_release_processor();
+	}
+
+	message_envelope = dequeue(gp_current_process->m_message_q);
+	
+	// atomic(off)
+	__enable_irq();
+	
+	return message_envelope;
 }
 
 

@@ -41,8 +41,7 @@ typedef enum {
 	BLOCKED,
 	WAIT_FOR_MSG,
 	RUNNING,
-	INTERRUPTED,
-	BLOCKED_ON_RECEIVE
+	INTERRUPTED
 } PROC_STATE_E;  
 
 /*
@@ -56,7 +55,8 @@ typedef struct pcb
 	U32 *mp_sp;				/* stack pointer of the process */
 	U32 m_pid;				/* process id */
 	U32 m_priority;
-	PROC_STATE_E m_state;	/* state of the process */      
+	PROC_STATE_E m_state;	/* state of the process */   
+	Queue *m_message_q;
 } PCB;
 
 /* initialization table item */
@@ -65,7 +65,6 @@ typedef struct proc_init
 	int m_pid;				/* process id */ 
 	int m_priority;			/* initial priority, not used in this example. */ 
 	int m_stack_size;		/* size of stack in words */
-	Queue *m_msg_q;
 	void (*mpf_start_pc)();	/* entry point of the process */    
 } PROC_INIT;
 

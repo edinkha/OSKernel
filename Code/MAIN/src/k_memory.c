@@ -145,6 +145,8 @@ U32 *alloc_stack(U32 size_b)
 }
 
 void *k_request_memory_block(void) {
+	// atomic(on)
+	__disable_irq();
 #ifdef DEBUG_0 
 	printf("k_request_memory_block: entering...\r\n");
 #endif
@@ -160,17 +162,25 @@ void *k_request_memory_block(void) {
 	#ifdef DEBUG_0 
 		printf("k_request_memory_block: returning new block...\r\n");
 	#endif
+	
+	// atomic(off)
+	__enable_irq();
+	
 	//Pop a memory block off the heap and return a pointer to it
 	return (void *) pop_front(heap);
 }
 
 int k_release_memory_block(void *p_mem_blk) {
 	QNode* to_unblock;
+	
+	// atomic(on)
+	__disable_irq();
 #ifdef DEBUG_0 
 	printf("k_release_memory_block: releasing block @ 0x%x\r\n", p_mem_blk);
 #endif
 	//Return an error if the input memory block is not valid
 	if (p_mem_blk == NULL) {
+		__enable_irq();
 		return RTX_ERR;
 	}
 
@@ -189,6 +199,9 @@ int k_release_memory_block(void *p_mem_blk) {
 		// handle preemption
 		k_release_processor();
 	}	
+	
+	//atomic(off)
+	__enable_irq();
 	
 	return RTX_OK;
 }
