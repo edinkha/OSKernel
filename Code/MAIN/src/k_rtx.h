@@ -68,10 +68,33 @@ typedef struct proc_init
 	void (*mpf_start_pc)();	/* entry point of the process */    
 } PROC_INIT;
 
+typedef struct envelope_header
+{
+	struct envelope_header *next;
+	U32 sender_pid;
+	U32 destination_pid;
+} ENVELOPE_HEADER;
+
+/* message buffer */
+typedef struct msgbuf
+{
+	int mtype;              /* user defined message type */
+	char mtext[1];          /* body of the message */
+} MSG_BUF;
+
+typedef struct msg_envelope
+{
+	struct envelope_header header;
+	struct msgbuf content;
+} MSG_ENVELOPE;
+
 typedef struct mem_block
 {
 	U32 *next_block;
+	ENVELOPE_HEADER *header;
+	MSG_BUF *content;
 } MEM_BLOCK;
+
 
 extern PriorityQueue *blocked_memory_pq;
 extern PriorityQueue *blocked_waiting_pq;

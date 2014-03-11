@@ -263,6 +263,7 @@ int k_set_process_priority(int pid, int priority)
  */
 int send_message(int process_id, void *message_envelope){
 	PCB* receiving_proc;
+	ENVELOPE_HEADER* header_start;
 	
 	// atomic(on) -- i.e. prevent interrupts from affecting state
 	__disable_irq();
@@ -273,8 +274,10 @@ int send_message(int process_id, void *message_envelope){
 		return RTX_ERR;
 	}
 	
-	// TODO: using hack once malloc has been changed, set sender and receiver proc_ids in the message_envelope memblock
-	
+	// set sender and receiver proc_ids in the message_envelope memblock
+	header_start = (ENVELOPE_HEADER *)((MSG_ENVELOPE *) message_envelope - sizeof(ENVELOPE_HEADER));
+	((MSG_ENVELOPE *) header_start)->header.sender_pid = ((PCB *)gp_current_process)->m_pid;
+	((MSG_ENVELOPE *) header_start)->header.destination_pid = process_id;
 	
 	receiving_proc = get_proc_by_pid(process_id);
 
