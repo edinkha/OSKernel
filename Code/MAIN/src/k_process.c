@@ -292,6 +292,7 @@ int send_message(int process_id, void *message_envelope){
 
 	if (receiving_proc->m_state == WAIT_FOR_MSG) {
 		receiving_proc->m_state = READY;
+		remove_at_priority(blocked_waiting_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
 		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
 		// handle preemption
 		k_release_processor();
@@ -313,9 +314,12 @@ void *k_receive_message(int *sender_id){
 	// atomic(on)
 	__disable_irq();
 	
+	if (q_empty(gp_current_process->m_message_q)) {
+		push(blocked_waiting_pq, (QNode *) gp_current_process, gp_current_process->m_priority);
+	}
+	
 	while (q_empty(gp_current_process->m_message_q)) {
 		gp_current_process->m_state == WAIT_FOR_MSG;
-		push(blocked_waiting_pq, (QNode *) gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
 	}
 
