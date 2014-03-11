@@ -274,6 +274,7 @@ int send_message(int process_id, void *message_envelope){
 		return RTX_ERR;
 	}
 	
+	// TODO: VERIFY THIS WORKS
 	// set sender and receiver proc_ids in the message_envelope memblock
 	header_start = (ENVELOPE_HEADER *)((MSG_ENVELOPE *) message_envelope - sizeof(ENVELOPE_HEADER));
 	((MSG_ENVELOPE *) header_start)->header.sender_pid = ((PCB *)gp_current_process)->m_pid;
@@ -287,6 +288,7 @@ int send_message(int process_id, void *message_envelope){
 		return RTX_ERR;
 	}
 	
+	// TODO: VERIFY THIS WORKS
 	// enqueue message_envelope onto the message_q of receiving_proc;
 	enqueue(receiving_proc->m_message_q, (QNode *) message_envelope);
 
@@ -324,6 +326,7 @@ void *k_receive_message(int *sender_id){
 		k_release_processor();
 	}
 
+	// TODO: VERIFY THIS WORKS
 	message_envelope = dequeue(gp_current_process->m_message_q);
 	
 	// atomic(off)

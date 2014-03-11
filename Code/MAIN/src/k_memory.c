@@ -166,6 +166,7 @@ void *k_request_memory_block(void) {
 	// atomic(off)
 	__enable_irq();
 	
+	// TODO: VERIFY THIS WORKS
 	//Pop a memory block off the heap and return a pointer to its content
 	return (void*)(pop_front(heap) + sizeof(ENVELOPE_HEADER));
 }
@@ -184,6 +185,7 @@ int k_release_memory_block(void *p_mem_blk) {
 		return RTX_ERR;
 	}
 
+	// TODO: VERIFY THIS WORKS
 	//Put the memory block back onto the heap
 	push_front(heap, (ListNode *)((ListNode *)p_mem_blk - sizeof(ENVELOPE_HEADER)));
 

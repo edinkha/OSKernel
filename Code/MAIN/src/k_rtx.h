@@ -91,10 +91,10 @@ typedef struct msg_envelope
 typedef struct mem_block
 {
 	U32 *next_block;
+	// TODO: FIX THIS
 	ENVELOPE_HEADER *header;
 	MSG_BUF *content;
 } MEM_BLOCK;
-
 
 extern PriorityQueue *blocked_memory_pq;
 extern PriorityQueue *blocked_waiting_pq;
