@@ -33,20 +33,13 @@ extern int k_release_processor(void);
 void print(PriorityQueue* pqueue)
 {
 	int i;
-	char str[5];
 	QNode* cur_node;
 	assert(pqueue != NULL);
 	for (i = 0; i < NUM_PRIORITIES; i++) {
 		cur_node = pqueue->queues[i].first;
 		while (cur_node != NULL) {
-			uart0_put_string("Process ID = ");
-			sprintf(str, "%d", ((PCB*)cur_node)->m_pid);
-			uart0_put_string(str);
-			uart0_put_string("\n\r");
-			uart0_put_string("Process Priority = ");
-			sprintf(str, "%d", ((PCB*)cur_node)->m_priority);
-			uart0_put_string(str);
-			uart0_put_string("\n\r");
+			printf("Process ID = %d\n\r", ((PCB*)cur_node)->m_pid);
+			printf("Process Priority = %d\n\r", ((PCB*)cur_node)->m_priority);
 			cur_node = cur_node->next;
 		}
 	}
@@ -237,25 +230,27 @@ void c_UART0_IRQHandler(void)
 		
 #ifdef DEBUG_HK
 		if (g_char_in == '!') {
-			uart0_put_string("! hotkey entered - printing processes on ready queue\n\r");
+			uart1_put_string("! hotkey entered - printing processes on ready queue\n\r");
 			print(ready_pq);
 		}
 		else if (g_char_in == '@') {
-			uart0_put_string("@ hotkey entered - printing processes on blocked on memory queue\n\r");
+			uart1_put_string("@ hotkey entered - printing processes on blocked on memory queue\n\r");
 			print(blocked_memory_pq);
 		}
 		else if (g_char_in == '#') {
-			uart0_put_string("# hotkey entered - printing processes on blocked on receive queue\n\r");
+			uart1_put_string("# hotkey entered - printing processes on blocked on receive queue\n\r");
 			print(blocked_waiting_pq);
 		}
 #endif // DEBUG_HK
-// 		if (g_char_in == '\n') {
-// 			
-// 		}
-// 		else {
-// 			g_buffer += g_char_in;
-// 		}
-		g_buffer[12] = g_char_in; // nasty hack
+		if (g_char_in == '\n') {
+			// send g_buffer string to KCD
+		}
+		else {
+			// send char to CRT to echo it back to console
+			
+			// add character to g_buffer string
+			g_buffer += g_char_in;
+		}
 		g_send_char = 1;
 		
 		/* setting the g_switch_flag */
