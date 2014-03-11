@@ -101,7 +101,7 @@ PCB* scheduler(void)
 	PCB* next_pcb;
 	PCB* top_pcb = (PCB*)top(ready_pq);
 	
-	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == WAIT_FOR_MSG) {
+	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
 		next_pcb = (PCB*)pop(ready_pq);
 	}
 	else {
@@ -292,7 +292,7 @@ int send_message(int process_id, void *message){
 	// enqueue message_envelope onto the message_q of receiving_proc;
 	enqueue(receiving_proc->m_message_q, (QNode *)envelope);
 
-	if (receiving_proc->m_state == WAIT_FOR_MSG) {
+	if (receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
 		receiving_proc->m_state = READY;
 		//Move the process from the blocked queue back to the ready queue
 		if (!remove_at_priority(blocked_waiting_pq, (QNode*) receiving_proc, receiving_proc->m_priority)) {
@@ -321,7 +321,7 @@ void *k_receive_message(int* sender_id){
 	__disable_irq();
 	
 	while (q_empty(gp_current_process->m_message_q)) {
-		gp_current_process->m_state = WAIT_FOR_MSG;
+		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
 		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
 	}
