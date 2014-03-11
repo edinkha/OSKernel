@@ -261,24 +261,24 @@ int k_set_process_priority(int pid, int priority)
  * @return: RTX_OK upon success
  *          RTX_ERR upon failure
  */
-int send_message(int process_id, void *message_envelope){
+int send_message(int process_id, void *message){
 	PCB* receiving_proc;
-	ENVELOPE_HEADER* header_start;
+	MSG_ENVELOPE* envelope;
 	
 	// atomic(on) -- i.e. prevent interrupts from affecting state
 	__disable_irq();
 	
 	// error checking
-	if (message_envelope == NULL || process_id < 0 || process_id > 15) {
+	if (message == NULL || process_id < 0 || process_id > 15) {
 		__enable_irq();
 		return RTX_ERR;
 	}
 	
 	// TODO: VERIFY THIS WORKS
 	// set sender and receiver proc_ids in the message_envelope memblock
-	header_start = (ENVELOPE_HEADER *)((MSG_ENVELOPE *) message_envelope - sizeof(ENVELOPE_HEADER));
-	((MSG_ENVELOPE *) header_start)->header.sender_pid = ((PCB *)gp_current_process)->m_pid;
-	((MSG_ENVELOPE *) header_start)->header.destination_pid = process_id;
+	envelope = (MSG_ENVELOPE *)message - SZ_MEM_BLOCK_HEADER;
+	envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
+	envelope->destination_pid = process_id;
 	
 	receiving_proc = get_proc_by_pid(process_id);
 
@@ -290,7 +290,7 @@ int send_message(int process_id, void *message_envelope){
 	
 	// TODO: VERIFY THIS WORKS
 	// enqueue message_envelope onto the message_q of receiving_proc;
-	enqueue(receiving_proc->m_message_q, (QNode *) message_envelope);
+	enqueue(receiving_proc->m_message_q, (QNode *)envelope);
 
 	if (receiving_proc->m_state == WAIT_FOR_MSG) {
 		receiving_proc->m_state = READY;
@@ -315,24 +315,24 @@ int send_message(int process_id, void *message_envelope){
  * @brief: Returns pointer to waiting message envelope, or blocks until a message is received
  * @return: pointer to message envelope
  */
-void *k_receive_message(int *sender_id){	
-	void *message_envelope;
+void *k_receive_message(int* sender_id){	
+	void* envelope;
 	// atomic(on)
 	__disable_irq();
 	
 	while (q_empty(gp_current_process->m_message_q)) {
 		gp_current_process->m_state = WAIT_FOR_MSG;
-		push(blocked_waiting_pq, (QNode *) gp_current_process, gp_current_process->m_priority);
+		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
 	}
 
 	// TODO: VERIFY THIS WORKS
-	message_envelope = dequeue(gp_current_process->m_message_q);
+	envelope = (void*)dequeue(gp_current_process->m_message_q);
 	
 	// atomic(off)
 	__enable_irq();
 	
-	return message_envelope;
+	return envelope;
 }
 
 

@@ -168,7 +168,7 @@ void *k_request_memory_block(void) {
 	
 	// TODO: VERIFY THIS WORKS
 	//Pop a memory block off the heap and return a pointer to its content
-	return (void*)(pop_front(heap) + sizeof(ENVELOPE_HEADER));
+	return (void*)(pop_front(heap) + SZ_MEM_BLOCK_HEADER);
 }
 
 int k_release_memory_block(void *p_mem_blk) {
@@ -187,7 +187,7 @@ int k_release_memory_block(void *p_mem_blk) {
 
 	// TODO: VERIFY THIS WORKS
 	//Put the memory block back onto the heap
-	push_front(heap, (ListNode *)((ListNode *)p_mem_blk - sizeof(ENVELOPE_HEADER)));
+	push_front(heap, (ListNode*)p_mem_blk - SZ_MEM_BLOCK_HEADER);
 
 	//If the blocked queue is not empty, take the first process and put it on the ready queue
 	//(since now there is memory available for that process to continue)
