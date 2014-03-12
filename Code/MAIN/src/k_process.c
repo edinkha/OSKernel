@@ -84,7 +84,7 @@ void process_init()
 		gp_pcbs[i]->m_pid = g_proc_table[i].m_pid;
 		gp_pcbs[i]->m_priority = g_proc_table[i].m_priority;
 		gp_pcbs[i]->m_state = NEW;
-		init_q(&(gp_pcbs[i]->m_message_q));
+		init_q(&gp_pcbs[i]->m_message_q);
 		
 		sp = alloc_stack(g_proc_table[i].m_stack_size);
 		*(--sp)  = INITIAL_xPSR;      // user process initial xPSR  

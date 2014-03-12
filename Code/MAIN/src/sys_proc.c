@@ -14,7 +14,6 @@
 #endif
 #ifdef DEBUG_HK
 #include <assert.h>
-#include "k_rtx.h"
 #endif
 
 uint8_t g_buffer[];
@@ -24,12 +23,6 @@ uint8_t g_char_in;
 uint8_t g_char_out;
 
 extern uint32_t g_switch_flag;
-
-extern int k_release_processor(void);
-extern void *k_request_memory_block(void);
-extern int k_release_memory_block(void *p_mem_blk);
-extern int send_message(int process_id, void *message);
-extern void *k_receive_message(int* sender_id);
 
 LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
 
@@ -183,13 +176,13 @@ void CRT(void)
 	
 	while(1) {
 		// grab the message from the CRT proc message queue
-		received_message = (MSG_BUF*)k_receive_message((int*)0);
+		received_message = (MSG_BUF*)receive_message((int*)0);
 		if (received_message->mtype == CRT_DISPLAY) {
-			k_send_message(PID_UART_IPROC, received_message);
+			send_message(PID_UART_IPROC, received_message);
 			// trigger the UART THRE interrupt bit so that UART i-proc runs
 			pUart->IER ^= IER_THRE;
 		} else {
-			k_release_memory_block((void*)received_message);
+			release_memory_block((void*)received_message);
 		}
 	}
 }
