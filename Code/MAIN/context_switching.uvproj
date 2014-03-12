@@ -430,6 +430,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\uart_irq.c</FilePath>
             </File>
+            <File>
+              <FileName>sys_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\sys_proc.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -539,6 +544,11 @@
               <FileName>uart_def.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\src\uart_def.h</FilePath>
+            </File>
+            <File>
+              <FileName>sys_proc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\sys_proc.h</FilePath>
             </File>
           </Files>
         </Group>
