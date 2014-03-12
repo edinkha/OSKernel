@@ -4,13 +4,6 @@
  * @author: Yiqing Huang
  * @author: Thomas Reidemeister
  * @date:   2014/01/17
- * NOTE: The example code shows one way of implementing context switching.
- *       The code only has minimal sanity check. There is no stack overflow check.
- *       The implementation assumes only two simple user processes and NO HARDWARE INTERRUPTS. 
- *       The purpose is to show how context switch could be done under stated assumptions. 
- *       These assumptions are not true in the required RTX Project!!!
- *       If you decide to use this piece of code, you need to understand the assumptions and
- *       the limitations. 
  */
 
 #include <LPC17xx.h>
@@ -61,8 +54,8 @@ void process_init()
 	
 	// null process initialization
 	g_proc_table[0].m_pid = PID_NULL;
-	g_proc_table[0].m_priority = 4;
-	g_proc_table[0].m_stack_size = 0x100;
+	g_proc_table[0].m_priority = LOWEST + 1; // Give the null process a priority lower than the lowest priority
+	g_proc_table[0].m_stack_size = USR_SZ_STACK;
 	g_proc_table[0].mpf_start_pc = &nullproc;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
@@ -75,33 +68,34 @@ void process_init()
 	// CRT process initialization
 	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
 	g_proc_table[NUM_TEST_PROCS + 1].m_priority = HIGH;
-	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = 0x100;
+	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = USR_SZ_STACK;
 	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &CRT;
 	
 	// UART i-process initialization
 	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
 	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
-	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = 0x100;
+	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = USR_SZ_STACK;
 	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
   
 	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
-		int j;
-		(gp_pcbs[i])->m_pid = (g_proc_table[i]).m_pid;
-		(gp_pcbs[i])->m_priority = (g_proc_table[i]).m_priority;
-		(gp_pcbs[i])->m_state = NEW;
+		int j; // Used in the loop at the bottom of this loop
+
+		gp_pcbs[i]->m_pid = g_proc_table[i].m_pid;
+		gp_pcbs[i]->m_priority = g_proc_table[i].m_priority;
+		gp_pcbs[i]->m_state = NEW;
 		init_q(&(gp_pcbs[i]->m_message_q));
 		
-		sp = alloc_stack((g_proc_table[i]).m_stack_size);
+		sp = alloc_stack(g_proc_table[i].m_stack_size);
 		*(--sp)  = INITIAL_xPSR;      // user process initial xPSR  
-		*(--sp)  = (U32)((g_proc_table[i]).mpf_start_pc); // PC contains the entry point of the process
+		*(--sp)  = (U32)(g_proc_table[i].mpf_start_pc); // PC contains the entry point of the process
 		for ( j = 0; j < 6; j++ ) { // R0-R3, R12 are cleared with 0
 			*(--sp) = 0x0;
 		}
-		(gp_pcbs[i])->mp_sp = sp;
+		gp_pcbs[i]->mp_sp = sp;
 	}
 	
-	/* put each process (minus null process) in the ready queue */
+	/* put each process (minus null process and I-processes) in the ready queue */
 	for (i = 1; i < NUM_PROCS - 1; i++) {
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
