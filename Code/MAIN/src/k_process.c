@@ -35,6 +35,10 @@ U32 g_switch_flag = 0;          /* whether to continue to run the process before
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
+// sys procs
+extern void CRT(void);
+extern void UART0_IRQHandler(void);
+
 /* The null process */
 void nullproc(void)
 {
@@ -52,7 +56,7 @@ void process_init()
 	int i;
 	U32 *sp;
   
-        /* fill out the initialization table */
+  /* fill out the initialization table */
 	set_test_procs();
 	
 	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
@@ -62,10 +66,22 @@ void process_init()
 		g_proc_table[i].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
 	// null process initialization
-	g_proc_table[NUM_TEST_PROCS].m_pid = (U32)(0);
+	g_proc_table[NUM_TEST_PROCS].m_pid = PID_NULL;
 	g_proc_table[NUM_TEST_PROCS].m_priority = 4;
 	g_proc_table[NUM_TEST_PROCS].m_stack_size = 0x100;
 	g_proc_table[NUM_TEST_PROCS].mpf_start_pc = &nullproc;
+	
+	// CRT process initialization
+	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
+	g_proc_table[NUM_TEST_PROCS + 1].m_priority = 0;
+	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = 0x100;
+	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &CRT;
+	
+	// UART i-process initialization
+	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
+	g_proc_table[NUM_TEST_PROCS + 2].m_priority = 0;
+	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = 0x100;
+	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
   
 	/* initilize exception stack frame (i.e. initial context) for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
@@ -261,7 +277,7 @@ int k_set_process_priority(int pid, int priority)
  * @return: RTX_OK upon success
  *          RTX_ERR upon failure
  */
-int send_message(int process_id, void *message){
+int k_send_message(int process_id, void *message){
 	PCB* receiving_proc;
 	MSG_ENVELOPE* envelope;
 	
@@ -316,7 +332,7 @@ int send_message(int process_id, void *message){
  * @return: pointer to message envelope
  */
 void *k_receive_message(int* sender_id){	
-	void* envelope;
+	void* message;
 	// atomic(on)
 	__disable_irq();
 	
@@ -326,16 +342,11 @@ void *k_receive_message(int* sender_id){
 		k_release_processor();
 	}
 
-	// TODO: VERIFY THIS WORKS
-	envelope = (void*)dequeue(gp_current_process->m_message_q);
+	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
+	message = (void*)(dequeue(gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
 	
 	// atomic(off)
 	__enable_irq();
 	
-	return envelope;
+	return message;
 }
-
-
-
-
-
