@@ -55,12 +55,14 @@ void process_init()
 	// null process initialization
 	g_proc_table[0].m_pid = PID_NULL;
 	g_proc_table[0].m_priority = LOWEST + 1; // Give the null process a priority lower than the lowest priority
+	g_proc_table[0].m_is_iproc = 0; // Null process is not i-proc
 	g_proc_table[0].m_stack_size = USR_SZ_STACK;
 	g_proc_table[0].mpf_start_pc = &nullproc;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
 		g_proc_table[i+1].m_pid = g_test_procs[i].m_pid;
 		g_proc_table[i+1].m_priority = g_test_procs[i].m_priority;
+		g_proc_table[i+1].m_is_iproc = 0; // test procs aren't i-procs
 		g_proc_table[i+1].m_stack_size = g_test_procs[i].m_stack_size;
 		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
@@ -68,12 +70,14 @@ void process_init()
 	// CRT process initialization
 	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
 	g_proc_table[NUM_TEST_PROCS + 1].m_priority = HIGH;
+	g_proc_table[NUM_TEST_PROCS + 1].m_is_iproc = 0; // CRT is not i-proc
 	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = USR_SZ_STACK;
 	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &CRT;
 	
 	// UART i-process initialization
 	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
 	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
+	g_proc_table[NUM_TEST_PROCS + 2].m_is_iproc = 1; // UART IS i-proc
 	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = USR_SZ_STACK;
 	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
   
@@ -83,6 +87,7 @@ void process_init()
 
 		gp_pcbs[i]->m_pid = g_proc_table[i].m_pid;
 		gp_pcbs[i]->m_priority = g_proc_table[i].m_priority;
+		gp_pcbs[i]->m_is_iproc = g_proc_table[i].m_is_iproc;
 		gp_pcbs[i]->m_state = NEW;
 		init_q(&gp_pcbs[i]->m_message_q);
 		
@@ -140,9 +145,9 @@ void configure_old_pcb(PCB* p_pcb_old)
 		return;
 	}
 
-	//Set the old process's state to READY and put itback in the ready queue if it's not the null process
+	//Set the old process's state to READY and put it back in the ready queue if it's not the null process or an i-proc
 	p_pcb_old->m_state = READY;
-	if (p_pcb_old != gp_pcbs[0]) {
+	if (p_pcb_old != gp_pcbs[0] && p_pcb_old->m_is_iproc != 1) {
 		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 	}
 	

@@ -84,6 +84,7 @@ typedef struct pcb
 	U32 *mp_sp;				/* stack pointer of the process */
 	U32 m_pid;				/* process id */
 	U32 m_priority;
+	U32 m_is_iproc;   /* whether or not PCB is iProc */
 	PROC_STATE_E m_state;	/* state of the process */   
 	Queue m_message_q;
 } PCB;
@@ -94,6 +95,7 @@ typedef struct proc_init
 	int m_pid;				/* process id */ 
 	int m_priority;			/* initial priority, not used in this example. */ 
 	int m_stack_size;		/* size of stack in words */
+	int m_is_iproc;     /* whether or not proc is iproc */
 	void (*mpf_start_pc)();	/* entry point of the process */    
 } PROC_INIT;
 
