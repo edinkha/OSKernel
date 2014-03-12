@@ -292,7 +292,7 @@ int k_send_message(int process_id, void *message){
 	
 	// TODO: VERIFY THIS WORKS
 	// set sender and receiver proc_ids in the message_envelope memblock
-	envelope = (MSG_ENVELOPE *)message - SZ_MEM_BLOCK_HEADER;
+	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
 	envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
 	envelope->destination_pid = process_id;
 	
@@ -343,7 +343,7 @@ void *k_receive_message(int* sender_id){
 	}
 
 	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
-	message = (void*)(dequeue(gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
+	message = (void*)((U8*)dequeue(gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
 	
 	// atomic(off)
 	__enable_irq();
