@@ -64,7 +64,7 @@ void memory_init(void)
   
 	for ( i = 0; i < NUM_PROCS; i++ ) {
 		gp_pcbs[i] = (PCB *)p_end;
-		p_end += sizeof(PCB); 
+		p_end += sizeof(PCB);
 	}
 #ifdef DEBUG_0  
 	printf("gp_pcbs[0] = 0x%x \r\n", gp_pcbs[0]);
@@ -145,6 +145,8 @@ U32 *alloc_stack(U32 size_b)
 }
 
 void *k_request_memory_block(void) {
+	// atomic(on)
+	__disable_irq();
 #ifdef DEBUG_0 
 	printf("k_request_memory_block: entering...\r\n");
 #endif
@@ -160,22 +162,32 @@ void *k_request_memory_block(void) {
 	#ifdef DEBUG_0 
 		printf("k_request_memory_block: returning new block...\r\n");
 	#endif
-	//Pop a memory block off the heap and return a pointer to it
-	return (void *) pop_front(heap);
+	
+	// atomic(off)
+	__enable_irq();
+	
+	// TODO: VERIFY THIS WORKS
+	//Pop a memory block off the heap and return a pointer to its content
+	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
 }
 
 int k_release_memory_block(void *p_mem_blk) {
 	QNode* to_unblock;
+	
+	// atomic(on)
+	__disable_irq();
 #ifdef DEBUG_0 
 	printf("k_release_memory_block: releasing block @ 0x%x\r\n", p_mem_blk);
 #endif
 	//Return an error if the input memory block is not valid
 	if (p_mem_blk == NULL) {
+		__enable_irq();
 		return RTX_ERR;
 	}
 
+	// TODO: VERIFY THIS WORKS
 	//Put the memory block back onto the heap
-	push_front(heap, (ListNode *)p_mem_blk);
+	push_front(heap, (ListNode*)((U8*)p_mem_blk - SZ_MEM_BLOCK_HEADER));
 
 	//If the blocked queue is not empty, take the first process and put it on the ready queue
 	//(since now there is memory available for that process to continue)
@@ -189,6 +201,9 @@ int k_release_memory_block(void *p_mem_blk) {
 		// handle preemption
 		k_release_processor();
 	}	
+	
+	//atomic(off)
+	__enable_irq();
 	
 	return RTX_OK;
 }

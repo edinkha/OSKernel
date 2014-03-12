@@ -4,13 +4,6 @@
  * @author: Yiqing Huang
  * @author: Thomas Reidemeister
  * @date:   2014/01/17
- * NOTE: The example code shows one way of implementing context switching.
- *       The code only has minimal sanity check. There is no stack overflow check.
- *       The implementation assumes only two simple user processes and NO HARDWARE INTERRUPTS. 
- *       The purpose is to show how context switch could be done under stated assumptions. 
- *       These assumptions are not true in the required RTX Project!!!
- *       If you decide to use this piece of code, you need to understand the assumptions and
- *       the limitations. 
  */
 
 #include <LPC17xx.h>
@@ -35,10 +28,9 @@ U32 g_switch_flag = 0;          /* whether to continue to run the process before
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
-Queue* receiving_q; 		// a receiving queue
-Queue* env_q;
-Queue* msg_q;
-
+// sys procs
+extern void CRT(void);
+extern void UART0_IRQHandler(void);
 
 /* The null process */
 void nullproc(void)
@@ -57,42 +49,63 @@ void process_init()
 	int i;
 	U32 *sp;
   
-        /* fill out the initialization table */
+  /* fill out the initialization table */
 	set_test_procs();
 	
-	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
-		g_proc_table[i].m_pid = g_test_procs[i].m_pid;
-		g_proc_table[i].m_priority = g_test_procs[i].m_priority;
-		g_proc_table[i].m_stack_size = g_test_procs[i].m_stack_size;
-		g_proc_table[i].mpf_start_pc = g_test_procs[i].mpf_start_pc;
-	}
 	// null process initialization
-	g_proc_table[NUM_TEST_PROCS].m_pid = (U32)(0);
-	g_proc_table[NUM_TEST_PROCS].m_priority = 4;
-	g_proc_table[NUM_TEST_PROCS].m_stack_size = 0x100;
-	g_proc_table[NUM_TEST_PROCS].mpf_start_pc = &nullproc;
+	g_proc_table[0].m_pid = PID_NULL;
+	g_proc_table[0].m_priority = LOWEST + 1; // Give the null process a priority lower than the lowest priority
+	g_proc_table[0].m_is_iproc = 0; // Null process is not i-proc
+	g_proc_table[0].m_stack_size = USR_SZ_STACK;
+	g_proc_table[0].mpf_start_pc = &nullproc;
+	
+	for (i = 0; i < NUM_TEST_PROCS; i++) {
+		g_proc_table[i+1].m_pid = g_test_procs[i].m_pid;
+		g_proc_table[i+1].m_priority = g_test_procs[i].m_priority;
+		g_proc_table[i+1].m_is_iproc = 0; // test procs aren't i-procs
+		g_proc_table[i+1].m_stack_size = g_test_procs[i].m_stack_size;
+		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
+	}
+	
+	// CRT process initialization
+	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
+	g_proc_table[NUM_TEST_PROCS + 1].m_priority = HIGH;
+	g_proc_table[NUM_TEST_PROCS + 1].m_is_iproc = 0; // CRT is not i-proc
+	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = USR_SZ_STACK;
+	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &CRT;
+	
+	// UART i-process initialization
+	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
+	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
+	g_proc_table[NUM_TEST_PROCS + 2].m_is_iproc = 1; // UART IS i-proc
+	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = USR_SZ_STACK;
+	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
   
-	/* initilize exception stack frame (i.e. initial context) for each process */
+	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
-		int j;
-		(gp_pcbs[i])->m_pid = (g_proc_table[i]).m_pid;
-		(gp_pcbs[i])->m_priority = (g_proc_table[i]).m_priority;
-		(gp_pcbs[i])->m_state = NEW;
+		int j; // Used in the loop at the bottom of this loop
+
+		gp_pcbs[i]->m_pid = g_proc_table[i].m_pid;
+		gp_pcbs[i]->m_priority = g_proc_table[i].m_priority;
+		gp_pcbs[i]->m_is_iproc = g_proc_table[i].m_is_iproc;
+		gp_pcbs[i]->m_state = NEW;
+		init_q(&gp_pcbs[i]->m_message_q);
 		
-		sp = alloc_stack((g_proc_table[i]).m_stack_size);
+		sp = alloc_stack(g_proc_table[i].m_stack_size);
 		*(--sp)  = INITIAL_xPSR;      // user process initial xPSR  
-		*(--sp)  = (U32)((g_proc_table[i]).mpf_start_pc); // PC contains the entry point of the process
+		*(--sp)  = (U32)(g_proc_table[i].mpf_start_pc); // PC contains the entry point of the process
 		for ( j = 0; j < 6; j++ ) { // R0-R3, R12 are cleared with 0
 			*(--sp) = 0x0;
 		}
-		(gp_pcbs[i])->mp_sp = sp;
+		gp_pcbs[i]->mp_sp = sp;
 	}
 	
-	/* put each process (minus null process) in the ready queue */
-	for (i = 0; i < NUM_TEST_PROCS; i++) {
+	/* put each process (minus null process and I-processes) in the ready queue */
+	for (i = 1; i < NUM_PROCS - 1; i++) {
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
+	
 }
 
 /**
@@ -106,7 +119,7 @@ PCB* scheduler(void)
 	PCB* next_pcb;
 	PCB* top_pcb = (PCB*)top(ready_pq);
 	
-	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == WAIT_FOR_MSG) {
+	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
 		next_pcb = (PCB*)pop(ready_pq);
 	}
 	else {
@@ -115,7 +128,7 @@ PCB* scheduler(void)
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
-		return gp_pcbs[NUM_TEST_PROCS];
+		return gp_pcbs[0];
 	}
 	else {
 		return next_pcb;
@@ -132,9 +145,9 @@ void configure_old_pcb(PCB* p_pcb_old)
 		return;
 	}
 
-	//Set the old process's state to READY and put itback in the ready queue if it's not the null process
+	//Set the old process's state to READY and put it back in the ready queue if it's not the null process or an i-proc
 	p_pcb_old->m_state = READY;
-	if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
+	if (p_pcb_old != gp_pcbs[0] && p_pcb_old->m_is_iproc != 1) {
 		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 	}
 	
@@ -149,12 +162,14 @@ void configure_old_pcb(PCB* p_pcb_old)
  */
 int process_switch(PCB* p_pcb_old)
 {
+	__disable_irq();
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
 			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
+		__enable_irq();
 		__set_MSP((U32) gp_current_process->mp_sp);
 		__rte();  // pop exception stack frame from the stack for a new processes
 	}
@@ -166,6 +181,7 @@ int process_switch(PCB* p_pcb_old)
 		//revert to the old process and return an error
 		if (gp_current_process->m_state != READY) {
 			gp_current_process = p_pcb_old;
+			__enable_irq();
 			return RTX_ERR;
 		}
 		
@@ -174,9 +190,11 @@ int process_switch(PCB* p_pcb_old)
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
+		__enable_irq();
 		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 	}
 	
+	//__enable_irq();
 	return RTX_OK;
 }
 
@@ -189,41 +207,54 @@ int k_release_processor(void)
 {
 	PCB* p_pcb_old = NULL;
 	
+	__disable_irq();
+	
 	p_pcb_old = gp_current_process;
 	gp_current_process = scheduler();
 	
 	if (gp_current_process == NULL) {
 		gp_current_process = p_pcb_old; // revert back to the old process
+		__enable_irq();
 		return RTX_ERR;
 	}
 	if (p_pcb_old == NULL) {
 		p_pcb_old = gp_current_process;
 	}
 	process_switch(p_pcb_old);
+	__enable_irq();
 	return RTX_OK;
 }
 
 /**
  * @brief: Finds the PCB with the given PID and returns a pointer to it
- * @return: A pionter to the PCB witht the given PID
+ * @return: A pointer to the PCB with the given PID
  */
 PCB* get_proc_by_pid(int pid)
 {
 	int i;
-	for (i = 0; i < NUM_TEST_PROCS; i++) {
+	__disable_irq();
+	for (i = 0; i < NUM_PROCS; i++) {
 		if (gp_pcbs[i]->m_pid == pid) {
+			__enable_irq();
 			return gp_pcbs[i];
 		}
 	}
+	__enable_irq();
 	return NULL; //Error
 }
 
 int k_get_process_priority(int pid)
 {
-	PCB* pcb = get_proc_by_pid(pid);
+	PCB* pcb;
+	
+	__disable_irq();
+	pcb = get_proc_by_pid(pid);
+	
 	if (pcb == NULL) {
+		__enable_irq();
 		return RTX_ERR;
 	}
+	__enable_irq();
 	return pcb->m_priority;
 }
 
@@ -231,16 +262,22 @@ int k_set_process_priority(int pid, int priority)
 {
 	PCB* pcb;
 	
+	// atomic(on)
+	__disable_irq();
+	
 	if (priority < 0 || priority > 3) {
+		__enable_irq();
 		return RTX_ERR;
 	}
 	
 	pcb = get_proc_by_pid(pid);
 	if (pcb == NULL) {
+		__enable_irq();
 		return RTX_ERR;
 	}
 	
 	if (pcb->m_priority == priority) { //Nothing to change
+		__enable_irq();
 		return RTX_OK;
 	}
 	
@@ -249,6 +286,7 @@ int k_set_process_priority(int pid, int priority)
 		case READY:
 			//Move the process to its new location in the priority queue based on its new priority
 			if (!remove_at_priority(ready_pq, (QNode*)pcb, pcb->m_priority)) {
+				__enable_irq();
 				return RTX_ERR;
 			}
 			push(ready_pq, (QNode*)pcb, priority);
@@ -257,35 +295,85 @@ int k_set_process_priority(int pid, int priority)
 			k_release_processor();
 			break;
 	}
+	__enable_irq();
+	return RTX_OK;
+}
+
+/**
+ * @brief: Sends message_envelope to process_id (i.e. add the message defined at message_envelope to process_id's message queue
+ * @return: RTX_OK upon success
+ *          RTX_ERR upon failure
+ */
+int k_send_message(int process_id, void *message){
+	PCB* receiving_proc;
+	MSG_ENVELOPE* envelope;
+	
+	// atomic(on) -- i.e. prevent interrupts from affecting state
+	__disable_irq();
+	
+	// error checking
+	if (message == NULL || process_id < 0) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
+	// TODO: VERIFY THIS WORKS
+	// set sender and receiver proc_ids in the message_envelope memblock
+	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
+	envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
+	envelope->destination_pid = process_id;
+	
+	receiving_proc = get_proc_by_pid(process_id);
+
+	// error checking
+	if (receiving_proc == NULL) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
+	// TODO: VERIFY THIS WORKS
+	// enqueue message_envelope onto the message_q of receiving_proc;
+	enqueue(&receiving_proc->m_message_q, (QNode *)envelope);
+
+	if (receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
+		receiving_proc->m_state = READY;
+		//Move the process from the blocked queue back to the ready queue
+		if (!remove_at_priority(blocked_waiting_pq, (QNode*) receiving_proc, receiving_proc->m_priority)) {
+			__enable_irq();
+			return RTX_ERR;
+		}
+		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
+		// handle preemption
+		k_release_processor();
+	}
+
+	// atomic(off)
+	__enable_irq();
 	
 	return RTX_OK;
 }
 
-//sending the message
-int send_message(int pid, void *p_msg){
-
-	PCB* pcb_t;
-
-	pcb_t = get_proc_by_pid(pid);
-
-	//enqueue env onto the msg_queue of receiving_proc;
-
-	//we have to create a queue for each proc.. each time that process receives a call, a message is removed from that queue
-	enqueue(msg_q, p_msg);
+/**
+ * NOTE: BLOCKING receive
+ * @brief: Returns pointer to waiting message envelope, or blocks until a message is received
+ * @return: pointer to message envelope
+ */
+void *k_receive_message(int* sender_id){	
+	void* message;
+	// atomic(on)
+	__disable_irq();
 	
-	//I am not sure about this line. So we want to enqueue an entire queue component into envelope queue, but it only takes in
-	//Qnodes
-	enqueue(env_q,  msg_q->first);
-
-	if(pcb_t->m_state == BLOCKED_ON_RECEIVE){
-		pcb_t->m_state = READY;
-		enqueue (receiving_q,(Qnode*) pcb_t->m_pid ) ;
+	while (q_empty(&gp_current_process->m_message_q)) {
+		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
+		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
+		k_release_processor();
 	}
 
-
-}
-
-void *k_receive_message(int *p_pid){
-
-
+	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
+	message = (void*)((U8*)dequeue(&gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
+	
+	// atomic(off)
+	__enable_irq();
+	
+	return message;
 }
