@@ -35,7 +35,6 @@ U32 g_switch_flag = 0;          /* whether to continue to run the process before
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
-
 /* The null process */
 void nullproc(void)
 {
@@ -102,7 +101,7 @@ PCB* scheduler(void)
 	PCB* next_pcb;
 	PCB* top_pcb = (PCB*)top(ready_pq);
 	
-	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == WAIT_FOR_MSG) {
+	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
 		next_pcb = (PCB*)pop(ready_pq);
 	}
 	else {
@@ -201,7 +200,7 @@ int k_release_processor(void)
 
 /**
  * @brief: Finds the PCB with the given PID and returns a pointer to it
- * @return: A pionter to the PCB witht the given PID
+ * @return: A pointer to the PCB with the given PID
  */
 PCB* get_proc_by_pid(int pid)
 {
@@ -256,3 +255,87 @@ int k_set_process_priority(int pid, int priority)
 	
 	return RTX_OK;
 }
+
+/**
+ * @brief: Sends message_envelope to process_id (i.e. add the message defined at message_envelope to process_id's message queue
+ * @return: RTX_OK upon success
+ *          RTX_ERR upon failure
+ */
+int send_message(int process_id, void *message){
+	PCB* receiving_proc;
+	MSG_ENVELOPE* envelope;
+	
+	// atomic(on) -- i.e. prevent interrupts from affecting state
+	__disable_irq();
+	
+	// error checking
+	if (message == NULL || process_id < 0 || process_id > 15) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
+	// TODO: VERIFY THIS WORKS
+	// set sender and receiver proc_ids in the message_envelope memblock
+	envelope = (MSG_ENVELOPE *)message - SZ_MEM_BLOCK_HEADER;
+	envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
+	envelope->destination_pid = process_id;
+	
+	receiving_proc = get_proc_by_pid(process_id);
+
+	// error checking
+	if (receiving_proc == NULL) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
+	// TODO: VERIFY THIS WORKS
+	// enqueue message_envelope onto the message_q of receiving_proc;
+	enqueue(receiving_proc->m_message_q, (QNode *)envelope);
+
+	if (receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
+		receiving_proc->m_state = READY;
+		//Move the process from the blocked queue back to the ready queue
+		if (!remove_at_priority(blocked_waiting_pq, (QNode*) receiving_proc, receiving_proc->m_priority)) {
+			__enable_irq();
+			return RTX_ERR;
+		}
+		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
+		// handle preemption
+		k_release_processor();
+	}
+
+	// atomic(off)
+	__enable_irq();
+	
+	return RTX_OK;
+}
+
+/**
+ * NOTE: BLOCKING receive
+ * @brief: Returns pointer to waiting message envelope, or blocks until a message is received
+ * @return: pointer to message envelope
+ */
+void *k_receive_message(int* sender_id){	
+	void* envelope;
+	// atomic(on)
+	__disable_irq();
+	
+	while (q_empty(gp_current_process->m_message_q)) {
+		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
+		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
+		k_release_processor();
+	}
+
+	// TODO: VERIFY THIS WORKS
+	envelope = (void*)dequeue(gp_current_process->m_message_q);
+	
+	// atomic(off)
+	__enable_irq();
+	
+	return envelope;
+}
+
+
+
+
+

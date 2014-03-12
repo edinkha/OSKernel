@@ -1,0 +1,51 @@
+Sending and Receiving Messages
+
+Message Implementations
+-----------------------
+
+1. kernel level view (k_rtx):
+
+	struct msgbuf  {
+		next message
+		Sender PID
+		Destination PID
+		int mtype;
+		char mtext[1];
+	};
+
+2. user level view (rtx):
+
+	struct msgbuf  {
+		int mtype;
+		char mtext[1];
+	};
+
+
+void send_message(int receiving_procid, msg*env){
+	
+	//turn on the timer
+	atomic(on)
+
+	//if in kernel mode, set the message attributes
+
+	//set it to the process that sent the message
+	sender_procid <- Sender 
+
+	//set it to the process that receives the message
+	destination_procid <- Receiver
+
+	//create a new process to be put on the PCB
+	pcb_t *receiving_proc = get_pcb_from_pid(receiving_pid)
+
+	//add env to message queue
+	msg_queue.enqueue(env)
+
+	//if the previous process was blocked on a receive message, unblock it
+
+	if ( receiving_proc−>state is BLOCKED_ON_RECEIVE ) {
+
+		receiving_proc.state = RDY
+		receiving_process_queue.enqueue (receiving_proc)
+
+	}
+}

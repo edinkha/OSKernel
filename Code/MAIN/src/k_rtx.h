@@ -21,6 +21,7 @@
 #define NUM_PROCS 3
 
 #define USR_SZ_MEM_BLOCK 0x80	/* heap memory block size is 128B     */
+#define SZ_MEM_BLOCK_HEADER 0x0C /* memory block header size is 12B */
 
 #ifdef DEBUG_0
 #define USR_SZ_STACK 0x200		/* user proc stack size 512B   */
@@ -39,7 +40,7 @@ typedef enum {
 	NEW = 0,
 	READY,
 	BLOCKED,
-	WAIT_FOR_MSG,
+	BLOCKED_ON_RECEIVE,
 	RUNNING,
 	INTERRUPTED
 } PROC_STATE_E;  
@@ -55,7 +56,8 @@ typedef struct pcb
 	U32 *mp_sp;				/* stack pointer of the process */
 	U32 m_pid;				/* process id */
 	U32 m_priority;
-	PROC_STATE_E m_state;	/* state of the process */      
+	PROC_STATE_E m_state;	/* state of the process */   
+	Queue *m_message_q;
 } PCB;
 
 /* initialization table item */
@@ -66,6 +68,22 @@ typedef struct proc_init
 	int m_stack_size;		/* size of stack in words */
 	void (*mpf_start_pc)();	/* entry point of the process */    
 } PROC_INIT;
+
+typedef struct msg_envelope
+{
+	struct msg_envelope *next;
+	U32 sender_pid;
+	U32 destination_pid;
+	int mtype;              /* user defined message type */
+	char mtext[1];          /* body of the message */
+} MSG_ENVELOPE;
+
+/* message buffer */
+typedef struct msgbuf
+{
+	int mtype;              /* user defined message type */
+	char mtext[1];          /* body of the message */
+} MSG_BUF;
 
 typedef struct mem_block
 {
