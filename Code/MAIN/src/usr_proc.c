@@ -51,6 +51,8 @@ void set_test_procs() {
   
 	g_test_procs[0].mpf_start_pc = &proc1;
 	g_test_procs[1].mpf_start_pc = &proc2;
+
+	initWC();
 }
 
 
@@ -110,3 +112,42 @@ void proc2(void)
 		
 	}
 }
+
+/**
+ * @brief: A process that initially registers the values of the wall clock to the 
+ *         KCD. 
+ */
+void initWC(void){
+
+	MSG_BUF* message_to_register;
+
+	// send "%WR" message to the KCD to register
+	message_to_register = (MSG_BUF*)k_request_memory_block();
+	message_to_register->mtype = KCD_REGISTER;
+	message_to_register->mtext[0] = '%';
+	message_to_register->mtext[1] = 'W';
+	message_to_register->mtext[2] = 'R';
+	k_send_message(PID_KCD, (void*)message_to_register);
+
+
+	// send "%WS" message to the KCD to register
+	message_to_register->mtype = KCD_REGISTER;
+	message_to_register->mtext[0] = '%';
+	message_to_register->mtext[1] = 'W';
+	message_to_register->mtext[2] = 'R';
+	k_send_message(PID_KCD, (void*)message_to_register);
+
+	// send "%WT" message to the KCD to register
+	message_to_register->mtype = KCD_REGISTER;
+	message_to_register->mtext[0] = '%';
+	message_to_register->mtext[1] = 'W';
+	message_to_register->mtext[2] = 'R';
+	k_send_message(PID_KCD, (void*)message_to_register);
+
+}
+
+
+
+
+
+
