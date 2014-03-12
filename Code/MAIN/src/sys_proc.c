@@ -91,6 +91,7 @@ void c_UART0_IRQHandler(void)
 	MSG_BUF* received_message;
 	MSG_BUF* message_to_send;
 	
+	__disable_irq();
 #ifdef DEBUG_0
 	uart1_put_string("Entering c_UART0_IRQHandler\n\r");
 #endif // DEBUG_0
@@ -170,6 +171,7 @@ void c_UART0_IRQHandler(void)
 #endif // DEBUG_0
 		return;
 	}	
+	__enable_irq();
 }
 
 /**

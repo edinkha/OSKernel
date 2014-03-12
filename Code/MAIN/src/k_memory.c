@@ -64,7 +64,7 @@ void memory_init(void)
   
 	for ( i = 0; i < NUM_PROCS; i++ ) {
 		gp_pcbs[i] = (PCB *)p_end;
-		p_end += sizeof(PCB); 
+		p_end += sizeof(PCB);
 	}
 #ifdef DEBUG_0  
 	printf("gp_pcbs[0] = 0x%x \r\n", gp_pcbs[0]);

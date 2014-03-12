@@ -30,6 +30,12 @@
 #define USR_SZ_STACK 0x100		/* user proc stack size 218B  */
 #endif /* DEBUG_0 */
 
+/* Process Priority. The bigger the number is, the lower the priority is*/
+#define HIGH    0
+#define MEDIUM  1
+#define LOW     2
+#define LOWEST  3
+
 /* Process IDs */
 #define PID_NULL 0
 #define PID_P1   1
@@ -79,7 +85,7 @@ typedef struct pcb
 	U32 m_pid;				/* process id */
 	U32 m_priority;
 	PROC_STATE_E m_state;	/* state of the process */   
-	Queue *m_message_q;
+	Queue m_message_q;
 } PCB;
 
 /* initialization table item */

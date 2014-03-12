@@ -59,36 +59,38 @@ void process_init()
   /* fill out the initialization table */
 	set_test_procs();
 	
-	for ( i = 0; i < NUM_TEST_PROCS; i++ ) {
-		g_proc_table[i].m_pid = g_test_procs[i].m_pid;
-		g_proc_table[i].m_priority = g_test_procs[i].m_priority;
-		g_proc_table[i].m_stack_size = g_test_procs[i].m_stack_size;
-		g_proc_table[i].mpf_start_pc = g_test_procs[i].mpf_start_pc;
-	}
 	// null process initialization
-	g_proc_table[NUM_TEST_PROCS].m_pid = PID_NULL;
-	g_proc_table[NUM_TEST_PROCS].m_priority = 4;
-	g_proc_table[NUM_TEST_PROCS].m_stack_size = 0x100;
-	g_proc_table[NUM_TEST_PROCS].mpf_start_pc = &nullproc;
+	g_proc_table[0].m_pid = PID_NULL;
+	g_proc_table[0].m_priority = 4;
+	g_proc_table[0].m_stack_size = 0x100;
+	g_proc_table[0].mpf_start_pc = &nullproc;
+	
+	for (i = 0; i < NUM_TEST_PROCS; i++) {
+		g_proc_table[i+1].m_pid = g_test_procs[i].m_pid;
+		g_proc_table[i+1].m_priority = g_test_procs[i].m_priority;
+		g_proc_table[i+1].m_stack_size = g_test_procs[i].m_stack_size;
+		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
+	}
 	
 	// CRT process initialization
 	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
-	g_proc_table[NUM_TEST_PROCS + 1].m_priority = 0;
+	g_proc_table[NUM_TEST_PROCS + 1].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = 0x100;
 	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &CRT;
 	
 	// UART i-process initialization
 	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
-	g_proc_table[NUM_TEST_PROCS + 2].m_priority = 0;
+	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = 0x100;
 	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
   
-	/* initilize exception stack frame (i.e. initial context) for each process */
+	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
 		int j;
 		(gp_pcbs[i])->m_pid = (g_proc_table[i]).m_pid;
 		(gp_pcbs[i])->m_priority = (g_proc_table[i]).m_priority;
 		(gp_pcbs[i])->m_state = NEW;
+		init_q(&(gp_pcbs[i]->m_message_q));
 		
 		sp = alloc_stack((g_proc_table[i]).m_stack_size);
 		*(--sp)  = INITIAL_xPSR;      // user process initial xPSR  
@@ -100,10 +102,11 @@ void process_init()
 	}
 	
 	/* put each process (minus null process) in the ready queue */
-	for (i = 0; i < NUM_TEST_PROCS; i++) {
+	for (i = 1; i < NUM_PROCS - 1; i++) {
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
+	
 }
 
 /**
@@ -126,7 +129,7 @@ PCB* scheduler(void)
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
-		return gp_pcbs[NUM_TEST_PROCS];
+		return gp_pcbs[0];
 	}
 	else {
 		return next_pcb;
@@ -145,7 +148,7 @@ void configure_old_pcb(PCB* p_pcb_old)
 
 	//Set the old process's state to READY and put itback in the ready queue if it's not the null process
 	p_pcb_old->m_state = READY;
-	if (p_pcb_old != gp_pcbs[NUM_TEST_PROCS]) {
+	if (p_pcb_old != gp_pcbs[0]) {
 		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 	}
 	
@@ -221,7 +224,7 @@ int k_release_processor(void)
 PCB* get_proc_by_pid(int pid)
 {
 	int i;
-	for (i = 0; i < NUM_TEST_PROCS; i++) {
+	for (i = 0; i < NUM_PROCS; i++) {
 		if (gp_pcbs[i]->m_pid == pid) {
 			return gp_pcbs[i];
 		}
@@ -285,7 +288,7 @@ int k_send_message(int process_id, void *message){
 	__disable_irq();
 	
 	// error checking
-	if (message == NULL || process_id < 0 || process_id > 15) {
+	if (message == NULL || process_id < 0) {
 		__enable_irq();
 		return RTX_ERR;
 	}
@@ -306,7 +309,7 @@ int k_send_message(int process_id, void *message){
 	
 	// TODO: VERIFY THIS WORKS
 	// enqueue message_envelope onto the message_q of receiving_proc;
-	enqueue(receiving_proc->m_message_q, (QNode *)envelope);
+	enqueue(&receiving_proc->m_message_q, (QNode *)envelope);
 
 	if (receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
 		receiving_proc->m_state = READY;
@@ -336,14 +339,14 @@ void *k_receive_message(int* sender_id){
 	// atomic(on)
 	__disable_irq();
 	
-	while (q_empty(gp_current_process->m_message_q)) {
+	while (q_empty(&gp_current_process->m_message_q)) {
 		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
 		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
 	}
 
 	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
-	message = (void*)((U8*)dequeue(gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
+	message = (void*)((U8*)dequeue(&gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
 	
 	// atomic(off)
 	__enable_irq();
