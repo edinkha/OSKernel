@@ -157,12 +157,14 @@ void configure_old_pcb(PCB* p_pcb_old)
  */
 int process_switch(PCB* p_pcb_old)
 {
+	__disable_irq();
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
 			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
+		__enable_irq();
 		__set_MSP((U32) gp_current_process->mp_sp);
 		__rte();  // pop exception stack frame from the stack for a new processes
 	}
@@ -174,6 +176,7 @@ int process_switch(PCB* p_pcb_old)
 		//revert to the old process and return an error
 		if (gp_current_process->m_state != READY) {
 			gp_current_process = p_pcb_old;
+			__enable_irq();
 			return RTX_ERR;
 		}
 		
@@ -182,9 +185,11 @@ int process_switch(PCB* p_pcb_old)
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
+		__enable_irq();
 		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 	}
 	
+	//__enable_irq();
 	return RTX_OK;
 }
 
@@ -197,17 +202,21 @@ int k_release_processor(void)
 {
 	PCB* p_pcb_old = NULL;
 	
+	__disable_irq();
+	
 	p_pcb_old = gp_current_process;
 	gp_current_process = scheduler();
 	
 	if (gp_current_process == NULL) {
 		gp_current_process = p_pcb_old; // revert back to the old process
+		__enable_irq();
 		return RTX_ERR;
 	}
 	if (p_pcb_old == NULL) {
 		p_pcb_old = gp_current_process;
 	}
 	process_switch(p_pcb_old);
+	__enable_irq();
 	return RTX_OK;
 }
 
@@ -218,20 +227,29 @@ int k_release_processor(void)
 PCB* get_proc_by_pid(int pid)
 {
 	int i;
+	__disable_irq();
 	for (i = 0; i < NUM_PROCS; i++) {
 		if (gp_pcbs[i]->m_pid == pid) {
+			__enable_irq();
 			return gp_pcbs[i];
 		}
 	}
+	__enable_irq();
 	return NULL; //Error
 }
 
 int k_get_process_priority(int pid)
 {
-	PCB* pcb = get_proc_by_pid(pid);
+	PCB* pcb;
+	
+	__disable_irq();
+	pcb = get_proc_by_pid(pid);
+	
 	if (pcb == NULL) {
+		__enable_irq();
 		return RTX_ERR;
 	}
+	__enable_irq();
 	return pcb->m_priority;
 }
 
@@ -239,16 +257,22 @@ int k_set_process_priority(int pid, int priority)
 {
 	PCB* pcb;
 	
+	// atomic(on)
+	__disable_irq();
+	
 	if (priority < 0 || priority > 3) {
+		__enable_irq();
 		return RTX_ERR;
 	}
 	
 	pcb = get_proc_by_pid(pid);
 	if (pcb == NULL) {
+		__enable_irq();
 		return RTX_ERR;
 	}
 	
 	if (pcb->m_priority == priority) { //Nothing to change
+		__enable_irq();
 		return RTX_OK;
 	}
 	
@@ -257,6 +281,7 @@ int k_set_process_priority(int pid, int priority)
 		case READY:
 			//Move the process to its new location in the priority queue based on its new priority
 			if (!remove_at_priority(ready_pq, (QNode*)pcb, pcb->m_priority)) {
+				__enable_irq();
 				return RTX_ERR;
 			}
 			push(ready_pq, (QNode*)pcb, priority);
@@ -265,7 +290,7 @@ int k_set_process_priority(int pid, int priority)
 			k_release_processor();
 			break;
 	}
-	
+	__enable_irq();
 	return RTX_OK;
 }
 
