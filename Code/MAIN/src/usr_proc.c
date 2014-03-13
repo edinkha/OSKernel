@@ -53,6 +53,8 @@ void set_test_procs() {
 	g_test_procs[1].mpf_start_pc = &proc2;
 
 	initWC();
+
+	//NEED TO SET THE PROCWC TO THE HIGHEST PRIORITY
 }
 
 
@@ -143,7 +145,95 @@ void initWC(void){
 	message_to_register->mtext[1] = 'W';
 	message_to_register->mtext[2] = 'R';
 	k_send_message(PID_KCD, (void*)message_to_register);
+}
 
+/**
+ * @brief: The Wall Clock process.
+ *         
+ */
+void procWC(void){
+	
+	MSG_BUF* receiving_message;
+	MSG_BUF* message_to_display;
+	int sec;
+	int min;
+	int hours;
+
+	while (1) {
+
+		receiving_message = (MSG_BUF*)k_receive_message(0);
+
+		if(receiving_message != NULL){
+
+			if(receiving_message->mtext[0] = '%' && receiving_message->mtext[1] = 'W' && receiving_message->mtext[2] = 'R'){
+				
+				message_to_display->mtype = KCD_DISPLAY;
+				message_to_display->mtype = '00:00:00';
+				k_send_message(PID_KCD,(void*)message_to_display);
+
+			}
+			else if(receiving_message->mtext[0] = '%' && receiving_message->mtext[1] = 'W' && receiving_message->mtext[2] = 'S'){
+
+				//error checking assuming that position 6 is a space
+				//the appropriate input should be %WS hh:mm:ss
+				if(receiving_message->mtext[7]!=':' || receiving_message->mtext[10]!=':'){
+					return RTX_ERR;
+				}
+
+				hours = atoi(receiving_message->mtext[4]) * 10 + atoi(receiving_message->mtext[5]);
+				min = atoi(receiving_message->mtext[8]) * 10 + atoi(receiving_message->mtext[9]);
+				sec = atoi(receiving_message->mtext[11]) * 10 + atoi(receiving_message->mtext[12]);
+
+				//verify that the value inputted is an appropriate time
+				if(hours > 24 || min > 60 || sec > 60){
+					return RTX_ERR;
+				}
+
+				//the type of message being sent to the KCD is a display message, not a register message
+				message_to_display->mtype = KCD_DISPLAY;
+
+				if(hours<10){
+					message_to_display->mtype[0] = '0';
+					message_to_display->mtype[1] = char(hours);
+				}else{
+					message_to_display->mtype[0] = receiving_message->mtext[4];
+					message_to_display->mtype[1] = receiving_message->mtext[5];
+				}
+				
+				message_to_display->mtype[2] = ':';
+
+				if(min<10){
+					message_to_display->mtype[3] = '0';
+					message_to_display->mtype[4] = char(min);
+				}else{
+					message_to_display->mtype[3] = receiving_message->mtext[8];
+					message_to_display->mtype[4] = receiving_message->mtext[9];
+				}
+
+				message_to_display->mtype[5] = ':';
+
+				if(sec<10){
+					message_to_display->mtype[6] = '0';
+					message_to_display->mtype[7] = char(sec);
+				}else{
+					message_to_display->mtype[6] = receiving_message->mtext[11];
+					message_to_display->mtype[7] = receiving_message->mtext[12];
+				}
+
+				k_send_message(PID_KCD,(void*)message_to_display);
+
+			}
+			else if(receiving_message->mtext[0] = '%' && receiving_message->mtext[1] = 'W' && receiving_message->mtext[2] = 'T'){
+
+				//I'm not sure how to terminate it exactly
+			}
+
+
+		}
+
+
+
+	}
 }
 
 
