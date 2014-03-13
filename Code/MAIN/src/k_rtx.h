@@ -18,7 +18,7 @@
 
 #define NULL 0
 #define NUM_TEST_PROCS 2
-#define NUM_PROCS 5
+#define NUM_PROCS 6
 
 #define USR_SZ_MEM_BLOCK 0x80	/* heap memory block size is 128B     */
 #define SZ_MEM_BLOCK_HEADER 0x0C /* memory block header size is 12B */

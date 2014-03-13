@@ -11,6 +11,7 @@
 #include "uart_polling.h"
 #include "k_process.h"
 #include "queue.h"
+#include "timer.h"
 
 #ifdef DEBUG_0
 #include "printf.h"
@@ -31,6 +32,7 @@ extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 // sys procs
 extern void CRT(void);
 extern void UART0_IRQHandler(void);
+extern void TIMER0_IRQHandler(void);
 
 /* The null process */
 void nullproc(void)
@@ -76,6 +78,12 @@ void process_init()
 	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = USR_SZ_STACK;
 	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
+	
+	// TIMER i-process initialization
+	g_proc_table[NUM_TEST_PROCS + 3].m_pid = PID_TIMER_IPROC;
+	g_proc_table[NUM_TEST_PROCS + 3].m_priority = HIGH;
+	g_proc_table[NUM_TEST_PROCS + 3].m_stack_size = USR_SZ_STACK;
+	g_proc_table[NUM_TEST_PROCS + 3].mpf_start_pc = &TIMER0_IRQHandler;
   
 	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
@@ -98,7 +106,7 @@ void process_init()
 	}
 	
 	/* put each process (minus null process and I-processes) in the ready queue */
-	for (i = 1; i < NUM_PROCS - 1; i++) {
+	for (i = 1; i <= NUM_TEST_PROCS; i++) {
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
