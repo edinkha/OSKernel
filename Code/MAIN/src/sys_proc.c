@@ -16,13 +16,13 @@
 #include <assert.h>
 #endif
 
-uint8_t g_buffer[];
-uint8_t *gp_buffer = g_buffer;
-uint8_t g_send_char = 0;
-uint8_t g_char_in;
-uint8_t g_char_out;
+U8 g_buffer[];
+U8 *gp_buffer = g_buffer;
+U8 g_send_char = 0;
+U8 g_char_in;
+U8 g_char_out;
 
-extern uint32_t g_switch_flag;
+extern U32 g_switch_flag;
 extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
 
@@ -81,7 +81,7 @@ RESTORE
  */
 void c_UART0_IRQHandler(void)
 {
-	uint8_t IIR_IntId;	    // Interrupt ID from IIR 		 
+	U8 IIR_IntId;	    // Interrupt ID from IIR 		 
 	LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *)LPC_UART0;
 	MSG_BUF* received_message;
 	MSG_BUF* message_to_send;
