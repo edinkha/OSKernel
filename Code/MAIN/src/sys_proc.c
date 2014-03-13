@@ -29,8 +29,10 @@ extern PCB* get_proc_by_pid(int pid);
 extern Queue delayed_env;
 
 typedef struct delayedMessage {
+	struct delayedMessage *next;
 	MSG_ENVELOPE* envelope;
 	int send_time;
+	int test_num;		//== test purpose
 } D_MSG;
 
 LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
@@ -201,6 +203,62 @@ void CRT(void)
 	}
 }
 
+
+void enqueue_sorted(Queue* queue, QNode* node){
+	//== Clean up this code sometime
+	//specifically for delay messages
+	D_MSG* msg;
+	QNode* iterator;
+	int send_time;
+	
+	msg = (D_MSG*) node;
+	send_time = msg->send_time;
+	
+	assert(queue != NULL);
+
+	if (q_empty(queue)) {
+		queue->first = node;
+		queue->last = node;
+		node->next = NULL;
+	}
+	else {
+		iterator = queue->first;
+		//msg = (D_MSG*) iterator;
+		while (iterator){
+			if (((D_MSG*)iterator)->send_time > send_time) {
+				//front, otherwise would have been added
+					queue->first = node;
+					queue->last = node;
+					node->next = iterator;
+					return;	//inserted
+			} else if (!iterator->next){
+				//iterator is last in the list || only one in the list
+				if (((D_MSG*)iterator)->send_time < send_time) {
+					//node goes after iterator
+					iterator->next = node;
+					queue->last = node;
+					node->next = NULL;
+					return;	//inserted
+				} else {
+					//node goes before iterator => front
+					queue->first = node;
+					queue->last = node;
+					node->next = iterator;
+					return;	//inserted
+				}
+			} else if (((D_MSG*)iterator->next)->send_time > send_time){
+				//node belongs after iterator
+				node->next = iterator->next;
+				iterator->next = node;
+				return;	//inserted
+			}
+				
+			iterator = iterator->next;
+		}		
+	}
+}
+
+
 void iTimer(void)
 {
 	int senderID = 0;
@@ -208,7 +266,42 @@ void iTimer(void)
 	QNode* node;
 	PCB* itimer;
 	int interrupted_pid;
+/*	
+	//TEST ENQUEUE SORTED LOCALLY HERE
+	QNode* iter;
+	D_MSG* l1;
+	D_MSG* l12;
+	D_MSG* l123;
+	D_MSG* l1234;
+	int temp;
+	l1=k_request_memory_block();
+	l1->send_time = 7;
+	l1->test_num = 3;
+
+	l12=k_request_memory_block();
+	l12->send_time = 5;
+	l12->test_num = 1;
 	
+	l123=k_request_memory_block();
+	l123->send_time = 6;
+	l123->test_num = 2;
+	
+	l1234=k_request_memory_block();
+	l1234->send_time = 5;
+	l1234->test_num = 1;
+	
+	enqueue_sorted(&delayed_env, (QNode*) l1);
+	enqueue_sorted(&delayed_env, (QNode*) l12);
+	enqueue_sorted(&delayed_env, (QNode*) l123);
+	enqueue_sorted(&delayed_env, (QNode*) l1234);
+	iter = delayed_env.first;
+	while (iter){
+		temp = ((D_MSG*)iter)->test_num;
+		printf("%d\n\r",temp);
+		iter = iter->next;
+	}
+	//================================
+*/
 	//Should process switch? (also at end)
 	itimer = get_proc_by_pid(PID_UART_IPROC);
 	itimer->m_state = RUNNING;
@@ -219,7 +312,7 @@ void iTimer(void)
 	//Check for all messages that want to be delayed
 	env = k_receive_message(&senderID);
 	while(env != ((void*)(U8)SZ_MEM_BLOCK_HEADER)) {		//== Hacky
-		//enqueue_sorted(&delayed_env, (QNode*) env); //== TODO
+		enqueue_sorted(&delayed_env, (QNode*) env);
 		env = k_receive_message(&senderID);
 	}
 
