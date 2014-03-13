@@ -25,8 +25,15 @@ U8 g_char_out;
 extern U32 g_switch_flag;
 extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
+extern void configure_old_pcb(PCB* p_pcb_old);
+extern int process_switch(PCB* p_pcb_old);
 
 LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
+U8 IIR_IntId;	    // Interrupt ID from IIR 		 
+MSG_BUF* received_message;
+MSG_BUF* message_to_send;
+//PCB* cur_proc;
+PCB* old_proc;
 
 #ifdef DEBUG_HK
 /**
@@ -62,39 +69,38 @@ __asm void UART0_IRQHandler(void)
 	IMPORT c_UART0_IRQHandler
 	; NOTE: remove next line most likely, but will need for timer handler
 	IMPORT k_release_processor
-	PUSH{r4-r11, lr}
+	;PUSH{r4-r11, lr}
 	BL c_UART0_IRQHandler
 	; NOTE: Look at code in UART_IRQ folder -- this part can likely be omitted because UART i-process doesnt need preemption
 	; However, will likely need it for the timer interrupt handler
-	LDR R4, =__cpp(&g_switch_flag)
-	LDR R4, [R4]
-	MOV R5, #0     
-	CMP R4, R5
-	BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
+	;LDR R4, =__cpp(&g_switch_flag)
+	;LDR R4, [R4]
+	;MOV R5, #0     
+	;CMP R4, R5
+	;BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
 	BL k_release_processor  ; otherwise (i.e g_switch_flag == 1, then switch to the other process)
 RESTORE
 	; END PART that can be removed
-	POP{r4-r11, pc}
+	;POP{r4-r11, pc}
 } 
 /**
  * @brief: c UART0 IRQ Handler
  */
 void c_UART0_IRQHandler(void)
 {
-	U8 IIR_IntId;	    // Interrupt ID from IIR 		 
-	LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *)LPC_UART0;
-	MSG_BUF* received_message;
-	MSG_BUF* message_to_send;
-	PCB* cur_proc;
+	//__disable_irq();
 	
-	__disable_irq();
+	//gp_current_process->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
+	//configure_old_pcb(gp_current_process); //Configure the old PCB
+	old_proc = gp_current_process;
+	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+	process_switch(old_proc);
+ 	//cur_proc = get_proc_by_pid(PID_UART_IPROC);
+ 	//cur_proc->m_state = RUNNING;
+ 	//gp_current_process = cur_proc;
 #ifdef DEBUG_0
 	uart1_put_string("Entering c_UART0_IRQHandler\n\r");
 #endif // DEBUG_0
-	
-	cur_proc = get_proc_by_pid(PID_UART_IPROC);
-	cur_proc->m_state = RUNNING;
-	gp_current_process = cur_proc;
 
 	/* Reading IIR automatically acknowledges the interrupt */
 	IIR_IntId = (pUart->IIR) >> 1 ; // skip pending bit in IIR 
@@ -135,18 +141,19 @@ void c_UART0_IRQHandler(void)
 			//g_buffer += g_char_in;
 		}
 		g_send_char = 1;
+		g_switch_flag = 1;
 		
 		/* setting the g_switch_flag */
-		if ( g_char_in == 'S' ) {
-			g_switch_flag = 1; 
-		} else {
-			g_switch_flag = 0;
-		}
+// 		if ( g_char_in == 'S' ) {
+// 			g_switch_flag = 1; 
+// 		} else {
+// 			g_switch_flag = 0;
+// 		}
 	} else if (IIR_IntId & IIR_THRE) {
 	/* THRE Interrupt, transmit holding register becomes empty */
 		received_message = (MSG_BUF*)k_receive_message((int*)0);
 		gp_buffer = received_message->mtext;
-		if (*gp_buffer != '\0' ) {
+		while (*gp_buffer != '\0' ) {
 			g_char_out = *gp_buffer;
 #ifdef DEBUG_0	
 			// you could use the printf instead
@@ -154,16 +161,16 @@ void c_UART0_IRQHandler(void)
 #endif // DEBUG_0			
 			pUart->THR = g_char_out;
 			gp_buffer++;
-		} else {
-#ifdef DEBUG_0
-			uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
-#endif // DEBUG_0
-			k_release_memory_block((void*)received_message);
-			pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
-			pUart->THR = '\0';
-			g_send_char = 0;
-			gp_buffer = g_buffer;		
 		}
+#ifdef DEBUG_0
+		uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
+#endif // DEBUG_0
+		k_release_memory_block((void*)received_message);
+		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
+		pUart->THR = '\0';
+		g_send_char = 0;
+		g_switch_flag = 0;
+		gp_buffer = g_buffer;		
 	      
 	} else {  /* not implemented yet */
 #ifdef DEBUG_0
@@ -171,7 +178,7 @@ void c_UART0_IRQHandler(void)
 #endif // DEBUG_0
 		return;
 	}	
-	__enable_irq();
+	//__enable_irq();
 }
 
 /**

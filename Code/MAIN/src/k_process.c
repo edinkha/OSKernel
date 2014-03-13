@@ -102,6 +102,10 @@ void process_init()
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
+	/* set i-proc states to READY */
+	for (i = NUM_PROCS - 1; i < NUM_PROCS; i++) {
+		gp_pcbs[i]->m_state = READY;
+	}
 	
 }
 
@@ -162,7 +166,9 @@ int process_switch(PCB* p_pcb_old)
 	__disable_irq();
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
+			if (p_pcb_old->m_is_iproc != 1) {
+				p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
+			}
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
@@ -181,14 +187,17 @@ int process_switch(PCB* p_pcb_old)
 			__enable_irq();
 			return RTX_ERR;
 		}
-		
-		p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
+		if (p_pcb_old->m_is_iproc != 1) {
+			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
+		}
 		configure_old_pcb(p_pcb_old); //Configure the old PCB
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
-		__enable_irq();
-		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
+		if (gp_current_process->m_is_iproc != 1) {
+			__enable_irq();
+			__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
+		}
 	}
 	
 	//__enable_irq();
@@ -341,7 +350,9 @@ int k_send_message(int process_id, void *message){
 		}
 		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
 		// handle preemption
-		k_release_processor();
+		if (gp_current_process->m_is_iproc != 1) {
+			k_release_processor();
+		}
 	}
 
 	// atomic(off)
