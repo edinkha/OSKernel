@@ -8,10 +8,16 @@
 
 #include <LPC17xx.h>
 #include "timer.h"
+#include "sys_proc.h"
+#include "k_rtx.h"
 
 #define BIT(X) (1<<X)
 
+extern PCB *gp_current_process;
+
 volatile uint32_t g_timer_count = 0; // increment every 1 ms
+
+U32 get_current_time() { return g_timer_count; }
 
 /**
  * @brief: initialize timer. Only timer 0 is supported
@@ -115,5 +121,7 @@ void c_TIMER0_IRQHandler(void)
 	LPC_TIM0->IR = BIT(0);  
 
 	g_timer_count++ ;
+	//gp_current_process->m_state = INTERRUPTED;
+	iTimer();
 }
 

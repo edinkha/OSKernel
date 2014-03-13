@@ -7,6 +7,7 @@
 #include <LPC17xx.h>
 #include "uart.h"
 #include "uart_polling.h"
+#include "timer.h"
 #include "k_process.h"
 #include "k_memory.h"
 #ifdef DEBUG_0
@@ -21,10 +22,16 @@ U8 *gp_buffer = g_buffer;
 U8 g_send_char = 0;
 U8 g_char_in;
 U8 g_char_out;
+Queue delayed_env;
 
 extern U32 g_switch_flag;
 extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
+
+typedef struct delayedMessage {
+	MSG_ENVELOPE* envelope;
+	int send_time;
+} D_MSG;
 
 LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
 
@@ -192,4 +199,26 @@ void CRT(void)
 			release_memory_block((void*)received_message);
 		}
 	}
+}
+
+void iTimer(void)
+{/*
+	int senderID = 0;
+	MSG_ENVELOPE* env;
+	QNode* node;
+	
+	
+	//Check for all messages that want to be delayed
+	env = k_receive_message(&senderID);
+	while(env) {
+		//enqueue_sorted(&delayed_env, (QNode*) env); //== TODO
+		env = k_receive_message(&senderID);
+	}
+
+	//Check if any envolopes in the delayed_env queue are ready to be sent
+	while (((D_MSG*)(delayed_env.first))->send_time >= get_current_time()){
+		node = dequeue(&delayed_env);
+		env = ((D_MSG*)node)->envelope;
+		send_message(env->destination_pid, env);
+	}*/
 }
