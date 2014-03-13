@@ -54,6 +54,11 @@
 #define PID_TIMER_IPROC  14
 #define PID_UART_IPROC   15
 
+/* Proc Types */
+#define REG_PROC 0
+#define TIMER_IPROC 14
+#define UART_IPROC 15
+
 /* Message Types */
 #define DEFAULT 0
 #define KCD_REG 1
@@ -84,7 +89,6 @@ typedef struct pcb
 	U32 *mp_sp;				/* stack pointer of the process */
 	U32 m_pid;				/* process id */
 	U32 m_priority;
-	U32 m_is_iproc;			/* whether or not PCB is iProc */
 	PROC_STATE_E m_state;	/* state of the process */   
 	Queue m_message_q;
 } PCB;

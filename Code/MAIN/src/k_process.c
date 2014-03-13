@@ -32,6 +32,8 @@ extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 extern void CRT(void);
 extern void UART0_IRQHandler(void);
 
+extern U32 proc_type;
+
 /* The null process */
 void nullproc(void)
 {
@@ -83,8 +85,6 @@ void process_init()
 
 		gp_pcbs[i]->m_pid = g_proc_table[i].m_pid;
 		gp_pcbs[i]->m_priority = g_proc_table[i].m_priority;
-		// If the PID of the process is less than that of the first i-proc, it is not an i-proc
-		gp_pcbs[i]->m_is_iproc = g_proc_table[i].m_pid < PID_TIMER_IPROC ? 0 : 1;
 		gp_pcbs[i]->m_state = NEW;
 		init_q(&gp_pcbs[i]->m_message_q);
 		
@@ -148,7 +148,7 @@ void configure_old_pcb(PCB* p_pcb_old)
 
 	//Set the old process's state to READY and put it back in the ready queue if it's not the null process or an i-proc
 	p_pcb_old->m_state = READY;
-	if (p_pcb_old != gp_pcbs[0] && p_pcb_old->m_is_iproc != 1) {
+	if (p_pcb_old != gp_pcbs[0]) {
 		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 	}
 	
@@ -166,9 +166,7 @@ int process_switch(PCB* p_pcb_old)
 	__disable_irq();
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-			if (p_pcb_old->m_is_iproc != 1) {
-				p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
-			}
+			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
@@ -187,17 +185,14 @@ int process_switch(PCB* p_pcb_old)
 			__enable_irq();
 			return RTX_ERR;
 		}
-		if (p_pcb_old->m_is_iproc != 1) {
-			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
-		}
+		
+		p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 		configure_old_pcb(p_pcb_old); //Configure the old PCB
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
-		if (gp_current_process->m_is_iproc != 1) {
-			__enable_irq();
-			__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
-		}
+		__enable_irq();
+		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 	}
 	
 	//__enable_irq();
@@ -326,7 +321,11 @@ int k_send_message(int process_id, void *message){
 	// TODO: VERIFY THIS WORKS
 	// set sender and receiver proc_ids in the message_envelope memblock
 	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
-	envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
+	if (proc_type == REG_PROC) {
+		envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
+	} else {
+		envelope->sender_pid = proc_type;
+	}
 	envelope->destination_pid = process_id;
 	
 	receiving_proc = get_proc_by_pid(process_id);
@@ -350,7 +349,7 @@ int k_send_message(int process_id, void *message){
 		}
 		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
 		// handle preemption
-		if (gp_current_process->m_is_iproc != 1) {
+		if (proc_type == REG_PROC) {
 			k_release_processor();
 		}
 	}
@@ -368,17 +367,24 @@ int k_send_message(int process_id, void *message){
  */
 void *k_receive_message(int* sender_id){	
 	void* message;
+	PCB* proc;
 	// atomic(on)
 	__disable_irq();
 	
-	while (q_empty(&gp_current_process->m_message_q)) {
-		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
-		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
-		k_release_processor();
-	}
-
-	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
-	message = (void*)((U8*)dequeue(&gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
+	if (proc_type == REG_PROC) {
+		while (q_empty(&gp_current_process->m_message_q)) {
+			gp_current_process->m_state = BLOCKED_ON_RECEIVE;
+			push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
+			k_release_processor();
+		}
+		message = (void*)((U8*)dequeue(&gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
+	} else {
+		proc = get_proc_by_pid(proc_type);
+		if (q_empty(&proc->m_message_q)) {
+			message = (void*)0;
+		}
+		message = (void*)((U8*)dequeue(&proc->m_message_q) + SZ_MEM_BLOCK_HEADER);
+	}	
 	
 	// atomic(off)
 	__enable_irq();
