@@ -136,6 +136,7 @@
             <RestoreMemoryDisplay>1</RestoreMemoryDisplay>
             <RestoreFunctions>0</RestoreFunctions>
             <RestoreToolbox>1</RestoreToolbox>
+            <RestoreTracepoints>1</RestoreTracepoints>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
           <TargetSelection>0</TargetSelection>
@@ -540,6 +541,11 @@
               <FileType>5</FileType>
               <FilePath>.\src\uart_def.h</FilePath>
             </File>
+            <File>
+              <FileName>utils.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\utils.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -559,6 +565,16 @@
               <FileName>priority_queue.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\priority_queue.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Utilities</GroupName>
+          <Files>
+            <File>
+              <FileName>utils.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\utils.c</FilePath>
             </File>
           </Files>
         </Group>
