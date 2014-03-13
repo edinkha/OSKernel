@@ -22,11 +22,11 @@ U8 *gp_buffer = g_buffer;
 U8 g_send_char = 0;
 U8 g_char_in;
 U8 g_char_out;
-Queue delayed_env;
 
 extern U32 g_switch_flag;
 extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
+extern Queue delayed_env;
 
 typedef struct delayedMessage {
 	MSG_ENVELOPE* envelope;
@@ -202,23 +202,35 @@ void CRT(void)
 }
 
 void iTimer(void)
-{/*
+{
 	int senderID = 0;
 	MSG_ENVELOPE* env;
 	QNode* node;
+	PCB* itimer;
+	int interrupted_pid;
 	
+	//Should process switch? (also at end)
+	itimer = get_proc_by_pid(PID_UART_IPROC);
+	itimer->m_state = RUNNING;
+	gp_current_process->m_state = INTERRUPTED;
+	interrupted_pid = gp_current_process->m_pid;
+	gp_current_process = itimer;
 	
 	//Check for all messages that want to be delayed
 	env = k_receive_message(&senderID);
-	while(env) {
+	while(env != ((void*)(U8)SZ_MEM_BLOCK_HEADER)) {		//== Hacky
 		//enqueue_sorted(&delayed_env, (QNode*) env); //== TODO
 		env = k_receive_message(&senderID);
 	}
 
 	//Check if any envolopes in the delayed_env queue are ready to be sent
-	while (((D_MSG*)(delayed_env.first))->send_time >= get_current_time()){
+	while (((D_MSG*)(delayed_env.first))->send_time >= get_current_time() && delayed_env.first){
 		node = dequeue(&delayed_env);
 		env = ((D_MSG*)node)->envelope;
 		send_message(env->destination_pid, env);
-	}*/
+	}
+	
+	itimer->m_state = READY;
+	gp_current_process = get_proc_by_pid(interrupted_pid);
+	gp_current_process->m_state = RUNNING;
 }

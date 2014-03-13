@@ -34,6 +34,9 @@ extern void CRT(void);
 extern void UART0_IRQHandler(void);
 extern void TIMER0_IRQHandler(void);
 
+/* Delayed messages */
+Queue delayed_env;
+
 /* The null process */
 void nullproc(void)
 {
@@ -84,6 +87,7 @@ void process_init()
 	g_proc_table[NUM_TEST_PROCS + 3].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 3].m_stack_size = USR_SZ_STACK;
 	g_proc_table[NUM_TEST_PROCS + 3].mpf_start_pc = &TIMER0_IRQHandler;
+	init_q(&delayed_env);
   
 	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
@@ -368,7 +372,7 @@ void *k_receive_message(int* sender_id){
 	// atomic(on)
 	__disable_irq();
 	
-	while (q_empty(&gp_current_process->m_message_q)) {
+	while (q_empty(&gp_current_process->m_message_q) && gp_current_process->m_is_iproc != 1) {
 		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
 		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
