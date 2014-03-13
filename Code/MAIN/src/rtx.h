@@ -11,6 +11,12 @@
 #define NULL 0
 #define NUM_TEST_PROCS 2
 
+#ifdef DEBUG_0
+#define USR_SZ_STACK 0x200  /* user proc stack size 512B */
+#else
+#define USR_SZ_STACK 0x100  /* user proc stack size 218B */
+#endif /* DEBUG_0 */
+
 /* Process Priority. The bigger the number is, the lower the priority is*/
 #define HIGH    0
 #define MEDIUM  1
@@ -38,8 +44,10 @@
 /* Message Types */
 #define DEFAULT 0
 #define KCD_REG 1
+ #define CRT_DISPLAY 2
 
 /* ----- Types ----- */
+ typedef unsigned char U8;
 typedef unsigned int U32;
 
 /* initialization table item */
@@ -55,7 +63,7 @@ typedef struct proc_init
 typedef struct msgbuf
 {
 	int mtype;              /* user defined message type */
-	char mtext[1];          /* body of the message */
+	U8 mtext[1];          /* body of the message */
 } MSG_BUF;
 
 /* ----- RTX User API ----- */
@@ -104,4 +112,3 @@ extern int k_delayed_send(int pid, void *p_msg, int delay);
 #define delayed_send(pid, p_msg, delay) _delayed_send((U32)k_delayed_send, pid, p_msg, delay)
 extern int _delayed_send(U32 p_func, int pid, void *p_msg, int delay) __SVC_0;  
 #endif /* !RTX_H_ */
-
