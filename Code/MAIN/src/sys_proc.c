@@ -34,7 +34,6 @@ MSG_BUF* received_message;
 MSG_BUF* message_to_send;
 //PCB* cur_proc;
 PCB* old_proc;
-U32 proc_type;
 
 #ifdef DEBUG_HK
 /**
@@ -70,19 +69,19 @@ __asm void UART0_IRQHandler(void)
 	IMPORT c_UART0_IRQHandler
 	; NOTE: remove next line most likely, but will need for timer handler
 	IMPORT k_release_processor
-	PUSH{r4-r11, lr}
+	;PUSH{r4-r11, lr}
 	BL c_UART0_IRQHandler
 	; NOTE: Look at code in UART_IRQ folder -- this part can likely be omitted because UART i-process doesnt need preemption
 	; However, will likely need it for the timer interrupt handler
-	LDR R4, =__cpp(&g_switch_flag)
-	LDR R4, [R4]
-	MOV R5, #0     
-	CMP R4, R5
-	BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
+	;LDR R4, =__cpp(&g_switch_flag)
+	;LDR R4, [R4]
+	;MOV R5, #0     
+	;CMP R4, R5
+	;BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
 	BL k_release_processor  ; otherwise (i.e g_switch_flag == 1, then switch to the other process)
 RESTORE
 	; END PART that can be removed
-	POP{r4-r11, pc}
+	;POP{r4-r11, pc}
 } 
 /**
  * @brief: c UART0 IRQ Handler
@@ -93,17 +92,12 @@ void c_UART0_IRQHandler(void)
 	
 	//gp_current_process->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 	//configure_old_pcb(gp_current_process); //Configure the old PCB
-	//old_proc = gp_current_process;
-	//gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-	//old_proc->m_state = INTERRUPTED;
-	//gp_current_process->m_state = RUNNING;
-	//process_switch(old_proc);
+	old_proc = gp_current_process;
+	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+	process_switch(old_proc);
  	//cur_proc = get_proc_by_pid(PID_UART_IPROC);
  	//cur_proc->m_state = RUNNING;
  	//gp_current_process = cur_proc;
-	
-	proc_type = UART_IPROC;
-	
 #ifdef DEBUG_0
 	uart1_put_string("Entering c_UART0_IRQHandler\n\r");
 #endif // DEBUG_0
@@ -183,9 +177,7 @@ void c_UART0_IRQHandler(void)
 			uart1_put_string("Should not get here!\n\r");
 #endif // DEBUG_0
 		return;
-	}
-	
-	proc_type = REG_PROC;
+	}	
 	//__enable_irq();
 }
 
