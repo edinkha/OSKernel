@@ -12,6 +12,7 @@
 #include "k_process.h"
 #include "queue.h"
 #include "timer.h"
+#include "sys_proc.h"
 
 #ifdef DEBUG_0
 #include "printf.h"
@@ -36,6 +37,7 @@ extern void TIMER0_IRQHandler(void);
 
 /* Delayed messages */
 Queue delayed_env;
+extern int get_current_time(void);
 
 /* The null process */
 void nullproc(void)
@@ -330,7 +332,9 @@ int k_send_message(int process_id, void *message){
 	// set sender and receiver proc_ids in the message_envelope memblock
 	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
 	envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
-	envelope->destination_pid = process_id;
+	//== TODO If message already has a destination, use it, else, use parameter pid (makes delayed messaging easier)
+	//envelope->destination_pid = process_id;
+	envelope->destination_pid = ((MSG_ENVELOPE*)message)->destination_pid;
 	
 	receiving_proc = get_proc_by_pid(process_id);
 
@@ -379,10 +383,24 @@ void *k_receive_message(int* sender_id){
 	}
 
 	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
-	message = (void*)((U8*)dequeue(&gp_current_process->m_message_q) + SZ_MEM_BLOCK_HEADER);
+	message = (void*)(/*(U8*)*/dequeue(&gp_current_process->m_message_q) /*+ SZ_MEM_BLOCK_HEADER*/);
 	
 	// atomic(off)
 	__enable_irq();
 	
 	return message;
+}
+
+int k_delayed_send(int process_id, void *message, int delay){
+	int time;
+	void* delayed;
+
+	delayed = message;
+	time = get_current_time();
+	((D_MSG*)delayed)->send_time = time + delay;
+	((D_MSG*)delayed)->envelope = (MSG_ENVELOPE*)message;
+	
+	k_send_message(PID_UART_IPROC, ((QNode*)(MSG_ENVELOPE*)delayed));
+	
+	return RTX_OK;
 }

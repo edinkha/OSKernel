@@ -17,7 +17,7 @@ extern PCB *gp_current_process;
 
 volatile uint32_t g_timer_count = 0; // increment every 1 ms
 
-U32 get_current_time() { return g_timer_count; }
+int get_current_time(void) { return g_timer_count; }
 
 /**
  * @brief: initialize timer. Only timer 0 is supported

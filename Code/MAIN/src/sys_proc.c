@@ -5,9 +5,10 @@
  */
 
 #include <LPC17xx.h>
+#include "timer.h"
+#include "sys_proc.h"
 #include "uart.h"
 #include "uart_polling.h"
-#include "timer.h"
 #include "k_process.h"
 #include "k_memory.h"
 #ifdef DEBUG_0
@@ -26,14 +27,8 @@ U8 g_char_out;
 extern U32 g_switch_flag;
 extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
+extern int get_current_time(void);
 extern Queue delayed_env;
-
-typedef struct delayedMessage {
-	struct delayedMessage *next;
-	MSG_ENVELOPE* envelope;
-	int send_time;
-	int test_num;		//== test purpose
-} D_MSG;
 
 LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
 
@@ -261,6 +256,7 @@ void enqueue_sorted(Queue* queue, QNode* node){
 
 void iTimer(void)
 {
+	int time;		//== cant call function outright?
 	int senderID = 0;
 	MSG_ENVELOPE* env;
 	QNode* node;
@@ -311,16 +307,17 @@ void iTimer(void)
 	
 	//Check for all messages that want to be delayed
 	env = k_receive_message(&senderID);
-	while(env != ((void*)(U8)SZ_MEM_BLOCK_HEADER)) {		//== Hacky
+	while(env /*!= ((void*)(U8)SZ_MEM_BLOCK_HEADER)*/) {		//== Hacky
 		enqueue_sorted(&delayed_env, (QNode*) env);
 		env = k_receive_message(&senderID);
 	}
-
+	time = get_current_time();
 	//Check if any envolopes in the delayed_env queue are ready to be sent
-	while (((D_MSG*)(delayed_env.first))->send_time >= get_current_time() && delayed_env.first){
+	while (((D_MSG*)(delayed_env.first))->send_time <= time && delayed_env.first){
 		node = dequeue(&delayed_env);
-		env = ((D_MSG*)node)->envelope;
-		send_message(env->destination_pid, env);
+		env = ((MSG_ENVELOPE*)node);
+		k_send_message(env->destination_pid, (void*)env);
+		time = get_current_time();
 	}
 	
 	itimer->m_state = READY;
