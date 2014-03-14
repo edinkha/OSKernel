@@ -59,9 +59,6 @@ void print(PriorityQueue* pqueue)
 void UART_IPROC(void)
 {
 	__disable_irq();
-	old_proc = gp_current_process;
-	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-	process_switch(old_proc);
 	
 	#ifdef DEBUG_0
 		uart1_put_string("Entering UART i-proc\n\r");
@@ -69,7 +66,11 @@ void UART_IPROC(void)
 
 		/* Reading IIR automatically acknowledges the interrupt */
 		IIR_IntId = (pUart->IIR) >> 1 ; // skip pending bit in IIR 
-		if (IIR_IntId & IIR_RDA) { // Receive Data Avaialbe
+		if (IIR_IntId & IIR_RDA) { // Receive Data Available
+			g_switch_flag = 1;
+			old_proc = gp_current_process;
+			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+			process_switch(old_proc);
 			/* read UART. Read RBR will clear the interrupt */
 			g_char_in = pUart->RBR;
 	#ifdef DEBUG_0
@@ -106,9 +107,12 @@ void UART_IPROC(void)
 				//g_buffer += g_char_in;
 			}
 			g_send_char = 1;
-			g_switch_flag = 1;
-			
+			//g_switch_flag = 1;			
 		} else if (IIR_IntId & IIR_THRE) {
+			g_switch_flag = 0;
+			old_proc = gp_current_process;
+			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+			process_switch(old_proc);
 		/* THRE Interrupt, transmit holding register becomes empty */
 			received_message = (MSG_BUF*)k_receive_message((int*)0);
 			gp_buffer = received_message->mtext;

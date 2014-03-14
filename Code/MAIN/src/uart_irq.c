@@ -169,7 +169,7 @@ __asm void UART0_IRQHandler(void)
  	BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
  	BL k_release_processor  ; otherwise (i.e g_switch_flag == 1, then switch to the other process)
 RESTORE
-  POP{r4-r11, pc}
+	POP{r4-r11, pc}
 } 
 // /**
 //  * @brief: c UART0 IRQ Handler
