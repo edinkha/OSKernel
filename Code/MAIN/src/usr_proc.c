@@ -147,11 +147,11 @@ void procWC()
 		// Receive message from KCD (command input), or timer (to display time)
 		msg_received = (MSG_BUF*)receive_message(sender_id);
 		
-		if (msg_received->mtext[2] == 'T') {
-			is_running = 0;
-		}
-		else {
-			if (msg_received->mtext[2] == 'R') {
+		if (sender_id == PID_KCD) {
+			if (msg_received->mtext[2] == 'T') {
+				is_running = 0;
+			}
+			else if (msg_received->mtext[2] == 'R') {
 				// Reset the time and set the wall clock to running
 				hours = minutes = seconds = 0;
 				is_running = 1;
@@ -172,35 +172,34 @@ void procWC()
 				seconds = ctoi(msg_received->mtext[10]) * 10 + ctoi(msg_received->mtext[11]);
 				is_running = 1;
 			}
+		}
+
+		if (is_running) {
+			// Send a message to the CRT to display the current time
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = CRT_DISPLAY;
 			
-			if (is_running) {
-				// Send a message to the CRT to display the current time
-				msg_to_send = (MSG_BUF*)request_memory_block();
-				msg_to_send->mtype = CRT_DISPLAY;
-				
-				msg_to_send->mtext[0] = itoc(hours / 10);
-				msg_to_send->mtext[1] = itoc(hours % 10);
-				msg_to_send->mtext[2] = ':';
-				msg_to_send->mtext[3] = itoc(minutes / 10);
-				msg_to_send->mtext[4] = itoc(minutes % 10);
-				msg_to_send->mtext[5] = ':';
-				msg_to_send->mtext[6] = itoc(seconds / 10);
-				msg_to_send->mtext[7] = itoc(seconds % 10);
-				msg_to_send->mtext[8] = '\0';
-				
-				send_message(PID_CRT, (void*)msg_to_send);
-				
-				// Set the time for when the wall clock is run again (which should be in exactly 1 second)
-				if (++seconds >= 60) {
-					seconds = 0;
-					if (++minutes >= 60) {
-						minutes = 0;
-						if (++hours >= 24) {
-							hours = 0;
-						}
+			msg_to_send->mtext[0] = itoc(hours / 10);
+			msg_to_send->mtext[1] = itoc(hours % 10);
+			msg_to_send->mtext[2] = ':';
+			msg_to_send->mtext[3] = itoc(minutes / 10);
+			msg_to_send->mtext[4] = itoc(minutes % 10);
+			msg_to_send->mtext[5] = ':';
+			msg_to_send->mtext[6] = itoc(seconds / 10);
+			msg_to_send->mtext[7] = itoc(seconds % 10);
+			msg_to_send->mtext[8] = '\0';
+			
+			send_message(PID_CRT, (void*)msg_to_send);
+			
+			// Set the time for when the wall clock is run again (which should be in exactly 1 second)
+			if (++seconds >= 60) {
+				seconds = 0;
+				if (++minutes >= 60) {
+					minutes = 0;
+					if (++hours >= 24) {
+						hours = 0;
 					}
 				}
-				
 			}
 		}
 		
