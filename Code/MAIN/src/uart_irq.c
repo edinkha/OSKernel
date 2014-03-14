@@ -8,6 +8,13 @@
 #include <LPC17xx.h>
 #include "uart.h"
 #include "uart_polling.h"
+#include "k_rtx.h"
+#include "k_process.h"
+
+extern PCB* get_proc_by_pid(int pid);
+extern int process_switch(PCB* p_pcb_old);
+extern PCB* old_proc;
+extern PCB* gp_current_process;
 
 /**
  * @brief: initialize the n_uart
@@ -138,4 +145,31 @@ int uart_irq_init(int n_uart) {
 	}
 	pUart->THR = '\0';
 	return 0;
+}
+
+/**
+ * @brief: use CMSIS ISR for UART0 IRQ Handler
+ * NOTE: This example shows how to save/restore all registers rather than just
+ *       those backed up by the exception stack frame. We add extra
+ *       push and pop instructions in the assembly routine. 
+ *       The actual c_UART0_IRQHandler does the rest of irq handling
+ */
+__asm void UART0_IRQHandler(void)
+{
+	PRESERVE8
+	IMPORT c_UART0_IRQHandler
+	IMPORT UART_IPROC
+	PUSH{r4-r11, lr}
+	;BL c_UART0_IRQHandler
+	BL UART_IPROC
+	POP{r4-r11, pc}
+} 
+/**
+ * @brief: c UART0 IRQ Handler
+ */
+void c_UART0_IRQHandler(void)
+{
+	old_proc = gp_current_process;
+	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+	process_switch(old_proc);
 }

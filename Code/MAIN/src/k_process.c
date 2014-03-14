@@ -30,7 +30,7 @@ extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
 // sys procs
 extern void CRT(void);
-extern void UART0_IRQHandler(void);
+extern void UART_IPROC(void);
 
 /* The null process */
 void nullproc(void)
@@ -75,7 +75,7 @@ void process_init()
 	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
 	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = USR_SZ_STACK;
-	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
+	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART_IPROC;
   
 	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
@@ -200,7 +200,7 @@ int process_switch(PCB* p_pcb_old)
 		}
 	}
 	
-	//__enable_irq();
+	__enable_irq();
 	return RTX_OK;
 }
 
