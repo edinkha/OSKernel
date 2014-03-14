@@ -15,6 +15,7 @@ extern PCB* get_proc_by_pid(int pid);
 extern int process_switch(PCB* p_pcb_old);
 extern PCB* old_proc;
 extern PCB* gp_current_process;
+extern U32 g_switch_flag;
 
 /**
  * @brief: initialize the n_uart
@@ -157,19 +158,27 @@ int uart_irq_init(int n_uart) {
 __asm void UART0_IRQHandler(void)
 {
 	PRESERVE8
-	IMPORT c_UART0_IRQHandler
 	IMPORT UART_IPROC
-	PUSH{r4-r11, lr}
-	;BL c_UART0_IRQHandler
-	BL UART_IPROC
-	POP{r4-r11, pc}
+ 	IMPORT k_release_processor
+ 	PUSH{r4-r11, lr}
+ 	BL UART_IPROC
+ 	LDR R4, =__cpp(&g_switch_flag)
+ 	LDR R4, [R4]
+ 	MOV R5, #0     
+ 	CMP R4, R5
+ 	BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
+ 	BL k_release_processor  ; otherwise (i.e g_switch_flag == 1, then switch to the other process)
+RESTORE
+  POP{r4-r11, pc}
 } 
-/**
- * @brief: c UART0 IRQ Handler
- */
-void c_UART0_IRQHandler(void)
-{
-	old_proc = gp_current_process;
-	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-	process_switch(old_proc);
-}
+// /**
+//  * @brief: c UART0 IRQ Handler
+//  */
+// void c_UART0_IRQHandler(void)
+// {
+// 	__disable_irq();
+// 	old_proc = gp_current_process;
+// 	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+// 	process_switch(old_proc);
+// 	__enable_irq();
+// }

@@ -58,6 +58,7 @@ void print(PriorityQueue* pqueue)
 // UART initialized in uart_irq.c
 void UART_IPROC(void)
 {
+	__disable_irq();
 	old_proc = gp_current_process;
 	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
 	process_switch(old_proc);
@@ -136,10 +137,7 @@ void UART_IPROC(void)
 	#endif // DEBUG_0
 			return;
 		}
-		old_proc = gp_current_process;
-		// Use scheduler to determine next proc to run, then process_switch to run it
-		gp_current_process = scheduler();
-		process_switch(old_proc);
+		__enable_irq();
 }
 
 /**
