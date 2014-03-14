@@ -147,7 +147,7 @@ void procWC()
 		// Receive message from KCD (command input), or timer (to display time)
 		msg_received = (MSG_BUF*)receive_message(sender_id);
 		
-		if (sender_id == PID_KCD) {
+		if (*sender_id == PID_KCD) {
 			if (msg_received->mtext[2] == 'T') {
 				is_running = 0;
 			}
