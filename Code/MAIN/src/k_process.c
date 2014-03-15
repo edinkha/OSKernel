@@ -219,7 +219,6 @@ int k_release_processor(void)
 	
 	p_pcb_old = gp_current_process;
 	gp_current_process = scheduler();
-	g_switch_flag = !(p_pcb_old == gp_current_process);
 	
 	if (gp_current_process == NULL) {
 		gp_current_process = p_pcb_old; // revert back to the old process
@@ -229,6 +228,8 @@ int k_release_processor(void)
 		p_pcb_old = gp_current_process;
 	}
 	process_switch(p_pcb_old);
+	
+	__enable_irq();
 
 	return RTX_OK;
 }

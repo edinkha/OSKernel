@@ -134,7 +134,7 @@ void UART_IPROC(void)
 			k_release_memory_block((void*)received_message);
 			__disable_irq();
 			pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
-			pUart->THR = '\0';
+			//pUart->THR = '\0';
 			g_send_char = 0;
 			g_switch_flag = 0;
 			gp_buffer = g_buffer;		
