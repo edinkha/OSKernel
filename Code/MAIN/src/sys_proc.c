@@ -27,8 +27,8 @@ extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
 extern void configure_old_pcb(PCB* p_pcb_old);
 extern int process_switch(PCB* p_pcb_old);
-
-LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
+extern LPC_UART_TypeDef *pUart;
+//LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
 U8 IIR_IntId;	    // Interrupt ID from IIR 		 
 MSG_BUF* received_message;
 MSG_BUF* message_to_send;
@@ -103,8 +103,8 @@ void UART_IPROC(void)
 				// send char to CRT to echo it back to console
 				message_to_send = (MSG_BUF*)k_request_memory_block();
 				__disable_irq();
-				message_to_send->mtype = 5;
-				//message_to_send->mtype = CRT_DISPLAY;
+				//message_to_send->mtype = 5;
+				message_to_send->mtype = CRT_DISPLAY;
 				message_to_send->mtext[0] = g_char_in;
 				k_send_message(PID_CRT, (void*)message_to_send);
 				__disable_irq();
@@ -137,7 +137,6 @@ void UART_IPROC(void)
 	#endif // DEBUG_0
 			k_release_memory_block((void*)received_message);
 			__disable_irq();
-			uart1_put_string("toggling UART interrupt bit in UART");
 			pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
 			pUart->THR = '\0';
 			g_send_char = 0;
@@ -170,7 +169,6 @@ void CRT(void)
 		if (received_message->mtype == CRT_DISPLAY) {
 			send_message(PID_UART_IPROC, received_message);
 			// trigger the UART THRE interrupt bit so that UART i-proc runs
-			uart1_put_string("toggling UART interrupt bit in CRT");
 			pUart->IER ^= IER_THRE;
 		} else {
 			release_memory_block((void*)received_message);

@@ -152,6 +152,9 @@ void *k_request_memory_block(void) {
 #endif
 	//While there are no memory blocks left on the heap, block the current process
 	while (empty(heap)) {
+		if (gp_current_process->m_is_iproc) {
+			return (void*)0;
+		}
 	#ifdef DEBUG_0 
 		printf("process %d blocked \r\n", gp_current_process->m_pid);
 	#endif

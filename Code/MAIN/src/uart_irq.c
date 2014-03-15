@@ -17,6 +17,8 @@ extern PCB* old_proc;
 extern PCB* gp_current_process;
 extern U32 g_switch_flag;
 
+LPC_UART_TypeDef *pUart;
+
 /**
  * @brief: initialize the n_uart
  * NOTES: It only supports UART0. It can be easily extended to support UART1 IRQ.
@@ -24,8 +26,6 @@ extern U32 g_switch_flag;
  * of LPC17xx_UM
  */
 int uart_irq_init(int n_uart) {
-
-	LPC_UART_TypeDef *pUart;
 
 	if ( n_uart ==0 ) {
 		/*
@@ -171,16 +171,3 @@ __asm void UART0_IRQHandler(void)
 RESTORE
 	POP{r4-r11, pc}
 } 
-// TODO: REALLY THINK PART ABOVE THROUGH WITH CURRENT SETUP
-
-// /**
-//  * @brief: c UART0 IRQ Handler
-//  */
-// void c_UART0_IRQHandler(void)
-// {
-// 	__disable_irq();
-// 	old_proc = gp_current_process;
-// 	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-// 	process_switch(old_proc);
-// 	__enable_irq();
-// }

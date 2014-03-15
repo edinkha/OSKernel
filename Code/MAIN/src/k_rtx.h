@@ -25,7 +25,7 @@
 
 #ifdef DEBUG_0
 #define USR_SZ_STACK 0x200		/* user proc stack size 512B   */
-#define NUM_HEAP_BLOCKS 4		/* Blocks just for debugging */
+#define NUM_HEAP_BLOCKS 10		/* Blocks just for debugging */
 #else
 #define USR_SZ_STACK 0x100		/* user proc stack size 218B  */
 #endif /* DEBUG_0 */
