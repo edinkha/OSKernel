@@ -59,7 +59,6 @@ void print(PriorityQueue* pqueue)
 // UART initialized in uart_irq.c
 void UART_IPROC(void)
 {
-	__disable_irq();
 	
 	#ifdef DEBUG_0
 		uart1_put_string("Entering UART i-proc\n\r");
@@ -71,9 +70,7 @@ void UART_IPROC(void)
 			g_switch_flag = 1;
 			old_proc = gp_current_process;
 			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-			__disable_irq();
 			process_switch(old_proc);
-			__disable_irq();
 			/* read UART. Read RBR will clear the interrupt */
 			g_char_in = pUart->RBR;
 	#ifdef DEBUG_0
@@ -118,7 +115,6 @@ void UART_IPROC(void)
 			g_switch_flag = 0;
 			old_proc = gp_current_process;
 			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-			__disable_irq();
 		/* THRE Interrupt, transmit holding register becomes empty */
 			received_message = (MSG_BUF*)k_receive_message((int*)0);
 			__disable_irq();
@@ -152,7 +148,6 @@ void UART_IPROC(void)
 	#endif // DEBUG_0
 			return;
 		}
-		__enable_irq();
 		return;
 }
 

@@ -157,6 +157,7 @@ int uart_irq_init(int n_uart) {
  */
 __asm void UART0_IRQHandler(void)
 {
+	CPSID I ; disable interrupts
 	PRESERVE8
 	IMPORT UART_IPROC
  	IMPORT k_release_processor
@@ -169,5 +170,6 @@ __asm void UART0_IRQHandler(void)
  	BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
  	BL k_release_processor  ; otherwise (i.e g_switch_flag == 1, then switch to the other process)
 RESTORE
+	CPSIE I ; enable interrupts
 	POP{r4-r11, pc}
 } 

@@ -100,10 +100,12 @@ uint32_t timer_init(uint8_t n_timer)
  */
 __asm void TIMER0_IRQHandler(void)
 {
+	CPSID I ; disable interrupts
 	PRESERVE8
 	IMPORT c_TIMER0_IRQHandler
 	PUSH{r4-r11, lr}
 	BL c_TIMER0_IRQHandler
+	CPSIE I ; enable interrupts
 	POP{r4-r11, pc}
 } 
 /**

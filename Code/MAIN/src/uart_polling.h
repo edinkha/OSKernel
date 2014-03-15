@@ -27,7 +27,7 @@
                            Table 279, page 306, LPC17xxum.pdf v2
                          */
 
-#define BIT(X)(1 << (X))/* convenient macro for bit operation */
+#define BIT(X)    ( 1 << (X) )/* convenient macro for bit operation */
 
 
 #define uart0_init()        uart_init(0)  

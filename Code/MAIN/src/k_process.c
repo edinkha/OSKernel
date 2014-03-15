@@ -124,8 +124,6 @@ PCB* scheduler(void)
 	PCB* next_pcb;
 	PCB* top_pcb = (PCB*)top(ready_pq);
 	
-	__disable_irq();
-	
   if (gp_current_process == NULL || gp_current_process->m_is_iproc == 1 || (top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
 		next_pcb = (PCB*)pop(ready_pq);
 	}
@@ -135,11 +133,9 @@ PCB* scheduler(void)
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
-		__enable_irq();
 		return gp_pcbs[0];
 	}
 	else {
-		__enable_irq();
 		return next_pcb;
 	}
 }
@@ -149,7 +145,6 @@ PCB* scheduler(void)
  */
 void configure_old_pcb(PCB* p_pcb_old)
 {
-	__disable_irq();
 	//If the old process wasn't running or interrupted, there is nothing to configure, so return
 	if (p_pcb_old->m_state != RUNNING && p_pcb_old->m_state != INTERRUPTED) {
 		return;
@@ -160,7 +155,6 @@ void configure_old_pcb(PCB* p_pcb_old)
 	if (p_pcb_old != gp_pcbs[0] && p_pcb_old->m_is_iproc != 1) {
 		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 	}
-	__enable_irq();
 	return;	
 }
 
@@ -173,14 +167,12 @@ void configure_old_pcb(PCB* p_pcb_old)
  */
 int process_switch(PCB* p_pcb_old)
 {
-	__disable_irq();
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
 			if (p_pcb_old->m_is_iproc != 1) {
 				p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			}
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
-			__disable_irq();
 		}
 		gp_current_process->m_state = RUNNING;
 		__enable_irq();
@@ -203,7 +195,6 @@ int process_switch(PCB* p_pcb_old)
 		if (p_pcb_old->m_is_iproc != 1) {
 			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
-			__disable_irq();
 		}
 		
 		//Run the new current process
@@ -213,7 +204,6 @@ int process_switch(PCB* p_pcb_old)
 			__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 		}
 	}
-	__enable_irq();
 	return RTX_OK;
 }
 
@@ -229,19 +219,16 @@ int k_release_processor(void)
 	
 	p_pcb_old = gp_current_process;
 	gp_current_process = scheduler();
-	__disable_irq();
 	g_switch_flag = !(p_pcb_old == gp_current_process);
 	
 	if (gp_current_process == NULL) {
 		gp_current_process = p_pcb_old; // revert back to the old process
-		__enable_irq();
 		return RTX_ERR;
 	}
 	if (p_pcb_old == NULL) {
 		p_pcb_old = gp_current_process;
 	}
 	process_switch(p_pcb_old);
-	__enable_irq();
 
 	return RTX_OK;
 }
@@ -335,7 +322,6 @@ int k_send_message(int process_id, void *message){
 	
 	// error checking
 	if (message == NULL || process_id < 0) {
-		__enable_irq();
 		return RTX_ERR;
 	}
 	
@@ -346,11 +332,9 @@ int k_send_message(int process_id, void *message){
 	envelope->destination_pid = process_id;
 	
 	receiving_proc = get_proc_by_pid(process_id);
-	__disable_irq();
 
 	// error checking
 	if (receiving_proc == NULL) {
-		__enable_irq();
 		return RTX_ERR;
 	}
 	
@@ -362,7 +346,6 @@ int k_send_message(int process_id, void *message){
 		receiving_proc->m_state = READY;
 		//Move the process from the blocked queue back to the ready queue
 		if (!remove_at_priority(blocked_waiting_pq, (QNode*) receiving_proc, receiving_proc->m_priority)) {
-			__enable_irq();
 			return RTX_ERR;
 		}
 		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);

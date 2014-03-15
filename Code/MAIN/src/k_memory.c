@@ -153,6 +153,7 @@ void *k_request_memory_block(void) {
 	//While there are no memory blocks left on the heap, block the current process
 	while (empty(heap)) {
 		if (gp_current_process->m_is_iproc) {
+			__enable_irq();
 			return (void*)0;
 		}
 	#ifdef DEBUG_0 
