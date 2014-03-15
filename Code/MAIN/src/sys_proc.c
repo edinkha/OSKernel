@@ -32,7 +32,7 @@ LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
 U8 IIR_IntId;	    // Interrupt ID from IIR 		 
 MSG_BUF* received_message;
 MSG_BUF* message_to_send;
-//PCB* cur_proc;
+PCB* unswitched_proc;
 PCB* old_proc;
 
 #ifdef DEBUG_HK
@@ -107,12 +107,11 @@ void UART_IPROC(void)
 				//g_buffer += g_char_in;
 			}
 			g_send_char = 1;
-			//g_switch_flag = 1;			
+	
 		} else if (IIR_IntId & IIR_THRE) {
 			g_switch_flag = 0;
 			old_proc = gp_current_process;
 			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-			process_switch(old_proc);
 		/* THRE Interrupt, transmit holding register becomes empty */
 			received_message = (MSG_BUF*)k_receive_message((int*)0);
 			gp_buffer = received_message->mtext;
@@ -130,10 +129,13 @@ void UART_IPROC(void)
 	#endif // DEBUG_0
 			k_release_memory_block((void*)received_message);
 			pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
-			pUart->THR = '\0';
+			//pUart->THR = '\0';
 			g_send_char = 0;
 			g_switch_flag = 0;
 			gp_buffer = g_buffer;		
+			unswitched_proc = old_proc;
+			old_proc = gp_current_process;
+			gp_current_process = unswitched_proc;
 					
 		} else {  /* not implemented yet */
 	#ifdef DEBUG_0
@@ -151,6 +153,7 @@ void CRT(void)
 {
 	MSG_BUF* received_message;
 	
+	__disable_irq();
 	while(1) {
 		// grab the message from the CRT proc message queue
 		received_message = (MSG_BUF*)receive_message((int*)0);
@@ -162,4 +165,5 @@ void CRT(void)
 			release_memory_block((void*)received_message);
 		}
 	}
+	__enable_irq();
 }
