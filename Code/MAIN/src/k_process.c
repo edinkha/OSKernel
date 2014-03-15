@@ -316,7 +316,7 @@ int k_send_message(int process_id, void *message){
 	
 	// error checking
 	if (message == NULL || process_id < 0) {
-		if (!gp_current_process->m_is_iproc) __enable_irq();
+		__enable_irq();
 		return RTX_ERR;
 	}
 	
@@ -330,7 +330,7 @@ int k_send_message(int process_id, void *message){
 
 	// error checking
 	if (receiving_proc == NULL) {
-		if (!gp_current_process->m_is_iproc) __enable_irq();
+		__enable_irq();
 		return RTX_ERR;
 	}
 	
@@ -338,21 +338,26 @@ int k_send_message(int process_id, void *message){
 	// enqueue message_envelope onto the message_q of receiving_proc;
 	enqueue(&receiving_proc->m_message_q, (QNode *)envelope);
 
-	// If the current process is not an i-process and the process receiving the message
-	// is currently blocked waiting for a message, move the receiving process from the
-	// blocked queue to the ready queue, set its state to READY, then release the
-	// processor so the receiving process has a chance to run
-	if (!gp_current_process->m_is_iproc && receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
+	// If the process receiving the message is currently blocked waiting for a message,
+	// move the receiving process from the blocked queue to the ready queue, set its state
+	// to READY, then release the processor so the receiving process has a chance to run
+	if (receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
 		if (!remove_at_priority(blocked_waiting_pq, (QNode*)receiving_proc, receiving_proc->m_priority)) {
 			__enable_irq();
 			return RTX_ERR;
 		}
 		push(ready_pq, (QNode*)receiving_proc, receiving_proc->m_priority);
 		receiving_proc->m_state = READY;
-		k_release_processor(); // handle preemption
+		// Only preempt if the current process is not an i-process
+		if (!gp_current_process->m_is_iproc) {
+			k_release_processor();
+		}
 	}
 
-	if (!gp_current_process->m_is_iproc) __enable_irq(); // atomic(off)
+	// Only re-enable irq if the current process is not an i-process
+	if (!gp_current_process->m_is_iproc) {
+		__enable_irq(); // atomic(off)
+	}
 	
 	return RTX_OK;
 }
@@ -369,7 +374,7 @@ void *k_receive_message(int* sender_id)
 	
 	__disable_irq(); // atomic(on)
 	
-	while (q_empty(&gp_current_process->m_message_q) && gp_current_process->m_is_iproc != 1) {
+	while (q_empty(&gp_current_process->m_message_q)) {
 		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
 		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
