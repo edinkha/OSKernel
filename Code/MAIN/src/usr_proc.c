@@ -129,7 +129,7 @@ void procWC()
 	int minutes;
 	int seconds;
 	int is_running;
-	int* sender_id;
+	int sender_id;
 	MSG_BUF* msg_received;
 	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
 	
@@ -145,9 +145,9 @@ void procWC()
 	
 	while (1) {
 		// Receive message from KCD (command input), or timer (to display time)
-		msg_received = (MSG_BUF*)receive_message(sender_id);
+		msg_received = (MSG_BUF*)receive_message(&sender_id);
 		
-		if (*sender_id == PID_KCD) {
+		if (sender_id == PID_KCD) {
 			if (msg_received->mtext[2] == 'T') {
 				is_running = 0;
 			}
