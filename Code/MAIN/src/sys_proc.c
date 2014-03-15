@@ -52,6 +52,7 @@ void print(PriorityQueue* pqueue)
 			cur_node = cur_node->next;
 		}
 	}
+	return;
 }
 #endif
 
@@ -70,7 +71,9 @@ void UART_IPROC(void)
 			g_switch_flag = 1;
 			old_proc = gp_current_process;
 			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+			__disable_irq();
 			process_switch(old_proc);
+			__disable_irq();
 			/* read UART. Read RBR will clear the interrupt */
 			g_char_in = pUart->RBR;
 	#ifdef DEBUG_0
@@ -96,12 +99,15 @@ void UART_IPROC(void)
 			if (g_char_in == '\r') {
 				// send g_buffer string to KCD
 			}
-			else {
+			else if (g_char_in != '\0') {
 				// send char to CRT to echo it back to console
 				message_to_send = (MSG_BUF*)k_request_memory_block();
-				message_to_send->mtype = CRT_DISPLAY;
+				__disable_irq();
+				message_to_send->mtype = 5;
+				//message_to_send->mtype = CRT_DISPLAY;
 				message_to_send->mtext[0] = g_char_in;
 				k_send_message(PID_CRT, (void*)message_to_send);
+				__disable_irq();
 				
 				// add character to g_buffer string
 				//g_buffer += g_char_in;
@@ -112,10 +118,12 @@ void UART_IPROC(void)
 			g_switch_flag = 0;
 			old_proc = gp_current_process;
 			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+			__disable_irq();
 		/* THRE Interrupt, transmit holding register becomes empty */
 			received_message = (MSG_BUF*)k_receive_message((int*)0);
+			__disable_irq();
 			gp_buffer = received_message->mtext;
-			while (*gp_buffer != '\0' ) {
+			if (*gp_buffer != '\0' ) {
 				g_char_out = *gp_buffer;
 	#ifdef DEBUG_0	
 				// you could use the printf instead
@@ -128,8 +136,10 @@ void UART_IPROC(void)
 			uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
 	#endif // DEBUG_0
 			k_release_memory_block((void*)received_message);
+			__disable_irq();
+			uart1_put_string("toggling UART interrupt bit in UART");
 			pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
-			//pUart->THR = '\0';
+			pUart->THR = '\0';
 			g_send_char = 0;
 			g_switch_flag = 0;
 			gp_buffer = g_buffer;		
@@ -144,6 +154,7 @@ void UART_IPROC(void)
 			return;
 		}
 		__enable_irq();
+		return;
 }
 
 /**
@@ -153,17 +164,16 @@ void CRT(void)
 {
 	MSG_BUF* received_message;
 	
-	__disable_irq();
 	while(1) {
 		// grab the message from the CRT proc message queue
 		received_message = (MSG_BUF*)receive_message((int*)0);
 		if (received_message->mtype == CRT_DISPLAY) {
 			send_message(PID_UART_IPROC, received_message);
 			// trigger the UART THRE interrupt bit so that UART i-proc runs
+			uart1_put_string("toggling UART interrupt bit in CRT");
 			pUart->IER ^= IER_THRE;
 		} else {
 			release_memory_block((void*)received_message);
 		}
 	}
-	__enable_irq();
 }

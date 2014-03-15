@@ -109,6 +109,8 @@ void process_init()
 	for (i = NUM_PROCS - 1; i < NUM_PROCS; i++) {
 		gp_pcbs[i]->m_state = READY;
 	}
+	
+	return;
 }
 
 /**
@@ -147,6 +149,7 @@ PCB* scheduler(void)
  */
 void configure_old_pcb(PCB* p_pcb_old)
 {
+	__disable_irq();
 	//If the old process wasn't running or interrupted, there is nothing to configure, so return
 	if (p_pcb_old->m_state != RUNNING && p_pcb_old->m_state != INTERRUPTED) {
 		return;
@@ -157,7 +160,8 @@ void configure_old_pcb(PCB* p_pcb_old)
 	if (p_pcb_old != gp_pcbs[0] && p_pcb_old->m_is_iproc != 1) {
 		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 	}
-	
+	__enable_irq();
+	return;	
 }
 
 /**
@@ -176,6 +180,7 @@ int process_switch(PCB* p_pcb_old)
 				p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			}
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
+			__disable_irq();
 		}
 		gp_current_process->m_state = RUNNING;
 		__enable_irq();
@@ -193,20 +198,22 @@ int process_switch(PCB* p_pcb_old)
 			__enable_irq();
 			return RTX_ERR;
 		}
+		// TODO: REALLY THINK THIS PART THROUGH WITH CURRENT SETUP
 		if (p_pcb_old->m_is_iproc != 1 && g_switch_flag) {
 			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
+			__disable_irq();
 		}
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
+		// TODO: REALLY THINK THIS PART THROUGH WITH CURRENT SETUP
 		if (gp_current_process->m_is_iproc != 1) {
 			__enable_irq();
 			__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 		}
 	}
 	
-	__enable_irq();
 	return RTX_OK;
 }
 
@@ -222,6 +229,7 @@ int k_release_processor(void)
 	
 	p_pcb_old = gp_current_process;
 	gp_current_process = scheduler();
+	__disable_irq();
 	
 	if (gp_current_process == NULL) {
 		gp_current_process = p_pcb_old; // revert back to the old process
@@ -233,6 +241,7 @@ int k_release_processor(void)
 	}
 	process_switch(p_pcb_old);
 	__enable_irq();
+
 	return RTX_OK;
 }
 
@@ -243,6 +252,7 @@ int k_release_processor(void)
 PCB* get_proc_by_pid(int pid)
 {
 	int i;
+	
 	__disable_irq();
 	for (i = 0; i < NUM_PROCS; i++) {
 		if (gp_pcbs[i]->m_pid == pid) {
@@ -282,6 +292,7 @@ int k_set_process_priority(int pid, int priority)
 	}
 	
 	pcb = get_proc_by_pid(pid);
+	__disable_irq();
 	if (pcb == NULL) {
 		__enable_irq();
 		return RTX_ERR;
@@ -304,6 +315,7 @@ int k_set_process_priority(int pid, int priority)
 		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
 			k_release_processor();
+			__disable_irq();
 			break;
 	}
 	__enable_irq();
@@ -335,6 +347,7 @@ int k_send_message(int process_id, void *message){
 	envelope->destination_pid = process_id;
 	
 	receiving_proc = get_proc_by_pid(process_id);
+	__disable_irq();
 
 	// error checking
 	if (receiving_proc == NULL) {
@@ -380,6 +393,7 @@ void *k_receive_message(int* sender_id){
 		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
 		push(blocked_waiting_pq, (QNode*)gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
+		__disable_irq();
 	}
 
 	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself

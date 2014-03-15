@@ -171,6 +171,8 @@ __asm void UART0_IRQHandler(void)
 RESTORE
 	POP{r4-r11, pc}
 } 
+// TODO: REALLY THINK PART ABOVE THROUGH WITH CURRENT SETUP
+
 // /**
 //  * @brief: c UART0 IRQ Handler
 //  */
