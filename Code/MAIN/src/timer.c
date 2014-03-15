@@ -150,7 +150,7 @@ void c_TIMER0_IRQHandler(void)
 	gp_current_process->m_pid = cur_pid;
 	gp_current_process->m_is_iproc = 0;
 
-	__enable_irq();    // Re-enable interrupts
+	__enable_irq(); // Re-enable interrupts
 }
 
 /**
@@ -160,15 +160,17 @@ void timer_i_process()
 {
 	// If a second has passed, send a message to the wall clock
 	if (g_timer_count % 1000 == 0) {
-		MSG_BUF* message = (MSG_BUF*)request_memory_block();
-		message->mtype = DEFAULT;
-		message->mtext[0] = '\0';
-		send_message(PID_CLOCK, message);
+		MSG_BUF* message = (MSG_BUF*)ki_request_memory_block();
+		if (message) {
+			message->mtype = DEFAULT;
+			message->mtext[0] = '\0';
+			k_send_message(PID_CLOCK, message);
+		}
 	}
 
 	// Remove expired messages from the list of delayed messages and send them
-	while (((MSG_ENVELOPE*)delayed_messages->front)->send_time <= g_timer_count) {
+	while (!empty(delayed_messages) && ((MSG_ENVELOPE*)delayed_messages->front)->send_time <= g_timer_count) {
 		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)pop_front(delayed_messages);
-		send_message(envelope->destination_pid, (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER));
+		k_send_message(envelope->destination_pid, (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER));
 	}
 }

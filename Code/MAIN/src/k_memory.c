@@ -177,10 +177,22 @@ void *k_request_memory_block(void)
 	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
 }
 
+/**
+ * The non-blocking version of k_request_memory_block for i-processes
+ */
+void* ki_request_memory_block(void)
+{
+	// If there are no memory blocks left on the heap, return a null pointer
+	if (empty(heap)) {
+		return (void*)0;
+	}
+	// TODO: VERIFY THIS WORKS
+	// Pop a memory block off the heap and return a pointer to its content
+	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
+}
+
 int k_release_memory_block(void *p_mem_blk)
 {
-	QNode* to_unblock;
-	
 	__disable_irq(); // atomic(on)
 
 #ifdef DEBUG_0 
@@ -193,23 +205,28 @@ int k_release_memory_block(void *p_mem_blk)
 	}
 
 	// TODO: VERIFY THIS WORKS
-	//Put the memory block back onto the heap
+	// Put the memory block back onto the heap
 	push_front(heap, (ListNode*)((U8*)p_mem_blk - SZ_MEM_BLOCK_HEADER));
 
-	//If the blocked queue is not empty, take the first process and put it on the ready queue
-	//(since now there is memory available for that process to continue)
+	// If the blocked queue is not empty, take the first process and put it on the ready queue
+	// (since now there is memory available for that process to continue)
 	if (!pq_empty(blocked_memory_pq)) {
-		to_unblock = pop(blocked_memory_pq);
-		((PCB *)to_unblock)->m_state = READY;
+		PCB* proc_to_unblock = (PCB*)pop(blocked_memory_pq);
+		proc_to_unblock->m_state = READY;
 	#ifdef DEBUG_0 
-		printf("unblocking process ID %x\r\n", ((PCB *)to_unblock)->m_pid);
+		printf("unblocking process ID %x\r\n", proc_to_unblock->m_pid);
 	#endif
-		push(ready_pq, to_unblock, ((PCB *)to_unblock)->m_priority);
-		// handle preemption
-		k_release_processor();
+		push(ready_pq, (QNode*)proc_to_unblock, proc_to_unblock->m_priority);
+		// Only preempt if the current process is not an i-process
+		if (!gp_current_process->m_is_iproc) {
+			k_release_processor();
+		}
 	}	
 	
-	__enable_irq(); //atomic(off)
+	// Only re-enable irq if the current process is not an i-process
+	if (!gp_current_process->m_is_iproc) {
+		__enable_irq(); // atomic(off)
+	}
 	
 	return RTX_OK;
 }

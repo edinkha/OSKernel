@@ -393,6 +393,27 @@ void *k_receive_message(int* sender_id)
 	return message;
 }
 
+/**
+ * The non-blocking version of k_receive_message for i-processes
+ * @return
+ */
+void* ki_receive_message(int* sender_id)
+{
+	MSG_ENVELOPE* envelope;
+	
+	// If the process has no messages, return a null pointer
+	if (q_empty(&gp_current_process->m_message_q)) {
+		return (void*)0;
+	}
+
+	// Get the first envelope in the current process's message queue
+	envelope = (MSG_ENVELOPE*)dequeue(&gp_current_process->m_message_q);
+	*sender_id = envelope->sender_pid; // Set the sender's ID
+
+	// Return pointer to the msgbuf in the envelope
+	return (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
+}
+
 int k_delayed_send(int process_id, void* message, int delay)
 {
 	MSG_ENVELOPE* envelope;
