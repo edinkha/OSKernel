@@ -1,5 +1,5 @@
 /**
- * @brief timer.c - Timer example code. Tiemr IRQ is invoked every 1ms
+ * @brief timer.c - Timer example code. Timer IRQ is invoked every 1ms
  * @author T. Reidemeister
  * @author Y. Huang
  * @author NXP Semiconductors
@@ -7,17 +7,15 @@
  */
 
 #include <LPC17xx.h>
-#include "timer.h"
-#include "sys_proc.h"
 #include "k_rtx.h"
+#include "timer.h"
 
 #define BIT(X) (1<<X)
 
-extern PCB *gp_current_process;
+extern PCB* gp_current_process;
 
 volatile uint32_t g_timer_count = 0; // increment every 1 ms
 
-int get_current_time(void) { return g_timer_count; }
 
 /**
  * @brief: initialize timer. Only timer 0 is supported
@@ -98,6 +96,14 @@ uint32_t timer_init(uint8_t n_timer)
 }
 
 /**
+ * Simply returns the time
+ */
+uint32_t get_current_time(void)
+{
+	return g_timer_count;
+}
+
+/**
  * @brief: use CMSIS ISR for TIMER0 IRQ Handler
  * NOTE: This example shows how to save/restore all registers rather than just
  *       those backed up by the exception stack frame. We add extra
@@ -111,16 +117,58 @@ __asm void TIMER0_IRQHandler(void)
 	PUSH{r4-r11, lr}
 	BL c_TIMER0_IRQHandler
 	POP{r4-r11, pc}
-} 
+}
+
 /**
- * @brief: c TIMER0 IRQ Handler
+ * @brief: C TIMER0 IRQ Handler
  */
 void c_TIMER0_IRQHandler(void)
 {
-	/* ack inttrupt, see section  21.6.1 on pg 493 of LPC17XX_UM */
-	LPC_TIM0->IR = BIT(0);  
+	int cur_pid;
 
-	g_timer_count++ ;
-	iTimer();
+	/* acknowledge interrupt */
+	LPC_TIM0->IR = BIT(0);
+
+	__disable_irq(); // Prevent any other interrupts while we handle this one
+
+	g_timer_count++; // Increment the time
+
+	/* Do a mock process switch by giving the current process variable some of the i-proc's data
+	 * (the only reason this has to be done is because the messaging functions use data from gp_curent_process)
+	 * NOTE: This looks hacky, and it is; but it is not worse than saving the gp_current_proc pointer, getting the
+	 * timer i-proc's pointer and setting that to gp_current_proc because that would take way more time and not
+	 * be any different than this (since the only current process data we care about is the current process's pid
+	 * and whether or not it is an i-process).
+	 */
+	cur_pid = gp_current_process->m_pid; // Save the current process's PID
+	gp_current_process->m_pid = PID_TIMER_IPROC;
+	gp_current_process->m_is_iproc = 1;
+
+	timer_i_process(); // Call the timer i-process
+
+	// Restore the current process's data
+	gp_current_process->m_pid = cur_pid;
+	gp_current_process->m_is_iproc = 0;
+
+	__enable_irq();    // Re-enable interrupts
 }
 
+/**
+ * @brief The timer i-process
+ */
+void timer_i_process()
+{
+	// If a second has passed, send a message to the wall clock
+	if (g_timer_count % 1000 == 0) {
+		MSG_BUF* message = (MSG_BUF*)request_memory_block();
+		message->mtype = DEFAULT;
+		message->mtext[0] = '\0';
+		send_message(PID_CLOCK, message);
+	}
+
+	// Remove expired messages from the list of delayed messages and send them
+	while (((MSG_ENVELOPE*)delayed_messages->front)->send_time <= g_timer_count) {
+		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)pop_front(delayed_messages);
+		send_message(envelope->destination_pid, (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER));
+	}
+}

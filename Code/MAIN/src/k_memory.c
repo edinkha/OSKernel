@@ -19,6 +19,7 @@ ForwardList* heap; // Pointer to the heap
 PriorityQueue* ready_pq; // Ready queue to hold the PCBs
 PriorityQueue* blocked_memory_pq; // Blocked priority queue to hold PCBs blocked due to memory
 PriorityQueue* blocked_waiting_pq; // Blocked priority queue to hold PCBs blocked due to waiting for a message
+ForwardList* delayed_messages; // List of delayed messages
 
 /**
  * @brief: Initialize RAM as follows:
@@ -89,6 +90,11 @@ void memory_init(void)
 	blocked_waiting_pq = (PriorityQueue *)p_end;
 	p_end += sizeof(PriorityQueue);
 	init_pq(blocked_waiting_pq);
+
+	// Allocate memory for the list of delayed messages
+	delayed_messages = (ForwardList*)p_end; 
+	p_end += sizeof(ForwardList);
+	init(delayed_messages);
   
 	/* allocate memory for the heap */
 #ifdef DEBUG_0
@@ -144,9 +150,10 @@ U32 *alloc_stack(U32 size_b)
 	return sp;
 }
 
-void *k_request_memory_block(void) {
-	// atomic(on)
-	__disable_irq();
+void *k_request_memory_block(void)
+{
+	__disable_irq(); // atomic(on)
+
 #ifdef DEBUG_0 
 	printf("k_request_memory_block: entering...\r\n");
 #endif
@@ -163,19 +170,19 @@ void *k_request_memory_block(void) {
 		printf("k_request_memory_block: returning new block...\r\n");
 	#endif
 	
-	// atomic(off)
-	__enable_irq();
+	__enable_irq(); // atomic(off)
 	
 	// TODO: VERIFY THIS WORKS
 	//Pop a memory block off the heap and return a pointer to its content
 	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
 }
 
-int k_release_memory_block(void *p_mem_blk) {
+int k_release_memory_block(void *p_mem_blk)
+{
 	QNode* to_unblock;
 	
-	// atomic(on)
-	__disable_irq();
+	__disable_irq(); // atomic(on)
+
 #ifdef DEBUG_0 
 	printf("k_release_memory_block: releasing block @ 0x%x\r\n", p_mem_blk);
 #endif
@@ -202,8 +209,7 @@ int k_release_memory_block(void *p_mem_blk) {
 		k_release_processor();
 	}	
 	
-	//atomic(off)
-	__enable_irq();
+	__enable_irq(); //atomic(off)
 	
 	return RTX_OK;
 }

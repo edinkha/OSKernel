@@ -8,26 +8,26 @@
 #ifndef K_RTX_H_
 #define K_RTX_H_
 
+#include <stdint.h>
+#include "forward_list.h"
 #include "queue.h"
 #include "priority_queue.h"
 
 /*----- Definitations -----*/
-
 #define RTX_ERR -1
 #define RTX_OK  0
-
 #define NULL 0
 #define NUM_TEST_PROCS 2
 #define NUM_PROCS 6
 
-#define USR_SZ_MEM_BLOCK 0x80	/* heap memory block size is 128B     */
-#define SZ_MEM_BLOCK_HEADER 0x0C /* memory block header size is 12B */
+#define USR_SZ_MEM_BLOCK 0x80    /* heap memory block size is 128 B */
+#define SZ_MEM_BLOCK_HEADER 0x10 /* memory block header size is 16 B */
 
 #ifdef DEBUG_0
-#define USR_SZ_STACK 0x200		/* user proc stack size 512B   */
+#define USR_SZ_STACK 0x200		/* user proc stack size 512 B */
 #define NUM_HEAP_BLOCKS 4		/* Blocks just for debugging */
 #else
-#define USR_SZ_STACK 0x100		/* user proc stack size 218B  */
+#define USR_SZ_STACK 0x100		/* user proc stack size 218 B */
 #endif /* DEBUG_0 */
 
 /* Process Priority. The bigger the number is, the lower the priority is*/
@@ -80,11 +80,11 @@ typedef enum {
 */
 typedef struct pcb 
 { 
-	struct pcb *mp_next;	/* next pcb */
-	U32 *mp_sp;				/* stack pointer of the process */
-	U32 m_pid;				/* process id */
-	U32 m_priority;
-	U32 m_is_iproc;			/* whether or not PCB is iProc */
+	struct pcb* mp_next;	/* next pcb */
+	uint32_t* mp_sp;		/* stack pointer of the process */
+	int m_pid;				/* process id */
+	int m_priority;
+	int m_is_iproc;			/* whether or not PCB is iProc */
 	PROC_STATE_E m_state;	/* state of the process */   
 	Queue m_message_q;
 } PCB;
@@ -93,16 +93,17 @@ typedef struct pcb
 typedef struct proc_init
 {	
 	int m_pid;				/* process id */ 
-	int m_priority;			/* initial priority, not used in this example. */ 
+	int m_priority;			/* initial priority */ 
 	int m_stack_size;		/* size of stack in words */
 	void (*mpf_start_pc)();	/* entry point of the process */    
 } PROC_INIT;
 
 typedef struct msg_envelope
 {
-	struct msg_envelope *next;
-	U32 sender_pid;
-	U32 destination_pid;
+	struct msg_envelope* next;
+	int sender_pid;
+	int destination_pid;
+	uint32_t send_time;
 	int mtype;              /* user defined message type */
 	U8 mtext[1];            /* body of the message */
 } MSG_ENVELOPE;
@@ -119,9 +120,11 @@ typedef struct mem_block
 	U32 *next_block;
 } MEM_BLOCK;
 
-extern PriorityQueue *blocked_memory_pq;
-extern PriorityQueue *blocked_waiting_pq;
-extern PriorityQueue *ready_pq;
+/* Global variables */
+extern PriorityQueue* blocked_memory_pq;
+extern PriorityQueue* blocked_waiting_pq;
+extern PriorityQueue* ready_pq;
+extern ForwardList* delayed_messages;
 
 /* ----- RTX User API ----- */
 #define __SVC_0  __svc_indirect(0)
@@ -139,7 +142,6 @@ extern int __SVC_0 _release_processor(U32 p_func);
 extern int k_get_process_priority(int pid);
 #define get_process_priority(pid) _get_process_priority((U32)k_get_process_priority, pid)
 extern int _get_process_priority(U32 p_func, int pid) __SVC_0;
-/* __SVC_0 can also be put at the end of the function declaration */
 
 extern int k_set_process_priority(int pid, int prio);
 #define set_process_priority(pid, prio) _set_process_priority((U32)k_set_process_priority, pid, prio)

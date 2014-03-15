@@ -8,9 +8,8 @@
 
 #include <LPC17xx.h>
 #include <system_LPC17xx.h>
-#include "uart_polling.h"
 #include "k_process.h"
-#include "queue.h"
+#include "uart_polling.h"
 #include "timer.h"
 #include "sys_proc.h"
 
@@ -35,9 +34,6 @@ extern void CRT(void);
 extern void UART0_IRQHandler(void);
 extern void TIMER0_IRQHandler(void);
 
-/* Delayed messages */
-Queue delayed_env;
-extern int get_current_time(void);
 
 /* The null process */
 void nullproc(void)
@@ -88,8 +84,7 @@ void process_init()
 	g_proc_table[NUM_TEST_PROCS + 3].m_pid = PID_TIMER_IPROC;
 	g_proc_table[NUM_TEST_PROCS + 3].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 3].m_stack_size = USR_SZ_STACK;
-	g_proc_table[NUM_TEST_PROCS + 3].mpf_start_pc = &TIMER0_IRQHandler;
-	init_q(&delayed_env);
+	g_proc_table[NUM_TEST_PROCS + 3].mpf_start_pc = &timer_i_process;
   
 	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {
@@ -111,8 +106,8 @@ void process_init()
 		gp_pcbs[i]->mp_sp = sp;
 	}
 	
-	/* put each process (minus null process and I-processes) in the ready queue */
-	for (i = 1; i <= NUM_TEST_PROCS; i++) {
+	/* put each process (minus null process and i-processes) in the ready queue */
+	for (i = 1; i < NUM_PROCS - 2; i++) { // (-2 for the two i-procs)
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
@@ -243,14 +238,12 @@ int k_release_processor(void)
 PCB* get_proc_by_pid(int pid)
 {
 	int i;
-	__disable_irq();
 	for (i = 0; i < NUM_PROCS; i++) {
 		if (gp_pcbs[i]->m_pid == pid) {
 			__enable_irq();
 			return gp_pcbs[i];
 		}
 	}
-	__enable_irq();
 	return NULL; //Error
 }
 
@@ -319,28 +312,25 @@ int k_send_message(int process_id, void *message){
 	PCB* receiving_proc;
 	MSG_ENVELOPE* envelope;
 	
-	// atomic(on) -- i.e. prevent interrupts from affecting state
-	__disable_irq();
+	__disable_irq(); // atomic(on)
 	
 	// error checking
 	if (message == NULL || process_id < 0) {
-		__enable_irq();
+		if (!gp_current_process->m_is_iproc) __enable_irq();
 		return RTX_ERR;
 	}
 	
 	// TODO: VERIFY THIS WORKS
 	// set sender and receiver proc_ids in the message_envelope memblock
 	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
-	envelope->sender_pid = ((PCB *)gp_current_process)->m_pid;
-	//== TODO If message already has a destination, use it, else, use parameter pid (makes delayed messaging easier)
-	//envelope->destination_pid = process_id;
-	envelope->destination_pid = ((MSG_ENVELOPE*)message)->destination_pid;
+	envelope->sender_pid = gp_current_process->m_pid;
+	envelope->destination_pid = process_id;
 	
 	receiving_proc = get_proc_by_pid(process_id);
 
 	// error checking
 	if (receiving_proc == NULL) {
-		__enable_irq();
+		if (!gp_current_process->m_is_iproc) __enable_irq();
 		return RTX_ERR;
 	}
 	
@@ -348,20 +338,21 @@ int k_send_message(int process_id, void *message){
 	// enqueue message_envelope onto the message_q of receiving_proc;
 	enqueue(&receiving_proc->m_message_q, (QNode *)envelope);
 
-	if (receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
-		receiving_proc->m_state = READY;
-		//Move the process from the blocked queue back to the ready queue
-		if (!remove_at_priority(blocked_waiting_pq, (QNode*) receiving_proc, receiving_proc->m_priority)) {
+	// If the current process is not an i-process and the process receiving the message
+	// is currently blocked waiting for a message, move the receiving process from the
+	// blocked queue to the ready queue, set its state to READY, then release the
+	// processor so the receiving process has a chance to run
+	if (!gp_current_process->m_is_iproc && receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
+		if (!remove_at_priority(blocked_waiting_pq, (QNode*)receiving_proc, receiving_proc->m_priority)) {
 			__enable_irq();
 			return RTX_ERR;
 		}
-		push(ready_pq, (QNode *) receiving_proc, receiving_proc->m_priority);
-		// handle preemption
-		k_release_processor();
+		push(ready_pq, (QNode*)receiving_proc, receiving_proc->m_priority);
+		receiving_proc->m_state = READY;
+		k_release_processor(); // handle preemption
 	}
 
-	// atomic(off)
-	__enable_irq();
+	if (!gp_current_process->m_is_iproc) __enable_irq(); // atomic(off)
 	
 	return RTX_OK;
 }
@@ -371,10 +362,12 @@ int k_send_message(int process_id, void *message){
  * @brief: Returns pointer to waiting message envelope, or blocks until a message is received
  * @return: pointer to message envelope
  */
-void *k_receive_message(int* sender_id){	
+void *k_receive_message(int* sender_id)
+{
+	MSG_ENVELOPE* envelope;
 	void* message;
-	// atomic(on)
-	__disable_irq();
+	
+	__disable_irq(); // atomic(on)
 	
 	while (q_empty(&gp_current_process->m_message_q) && gp_current_process->m_is_iproc != 1) {
 		gp_current_process->m_state = BLOCKED_ON_RECEIVE;
@@ -382,25 +375,54 @@ void *k_receive_message(int* sender_id){
 		k_release_processor();
 	}
 
+	// Get the first envelope in the current process's message queue
+	envelope = (MSG_ENVELOPE*)dequeue(&gp_current_process->m_message_q);
+
+	*sender_id = envelope->sender_pid; // Set the sender's ID
+
 	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
-	message = (void*)(/*(U8*)*/dequeue(&gp_current_process->m_message_q) /*+ SZ_MEM_BLOCK_HEADER*/);
+	message = (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
 	
-	// atomic(off)
-	__enable_irq();
+	__enable_irq(); // atomic(off)
 	
 	return message;
 }
 
-int k_delayed_send(int process_id, void *message, int delay){
-	int time;
-	void* delayed;
-
-	delayed = message;
-	time = get_current_time();
-	((D_MSG*)delayed)->send_time = time + delay;
-	((D_MSG*)delayed)->envelope = (MSG_ENVELOPE*)message;
+int k_delayed_send(int process_id, void* message, int delay)
+{
+	MSG_ENVELOPE* envelope;
 	
-	k_send_message(PID_UART_IPROC, ((QNode*)(MSG_ENVELOPE*)delayed));
+	__disable_irq(); // atomic(on)
+	
+	// error checking
+	if (message == NULL || process_id < 0) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
+	// Get the pointer to the envelope from the message and set the envelope's data
+	envelope = (MSG_ENVELOPE*)((U8*)message - SZ_MEM_BLOCK_HEADER);
+	envelope->sender_pid = gp_current_process->m_pid;
+	envelope->destination_pid = process_id;
+	envelope->send_time = get_current_time() + delay;
+	
+	/* Insert the envelope into the delayed messages list based on the send time.
+	 * The later the send time, the farther to the back of the list the message will be inserted.
+	 */
+	if (empty(delayed_messages) || ((MSG_ENVELOPE*)delayed_messages->front)->send_time > envelope->send_time) {
+		push_front(delayed_messages, (ListNode*)envelope);
+	}
+	else {
+		MSG_ENVELOPE* iter = (MSG_ENVELOPE*)delayed_messages->front;
+		while (iter->next && iter->next->send_time <= envelope->send_time) {
+			iter = iter->next;
+		}
+		// Perform the insertion
+		envelope->next = iter->next;
+		iter->next = envelope;
+	}
+	
+	__enable_irq(); // atomic(off)
 	
 	return RTX_OK;
 }

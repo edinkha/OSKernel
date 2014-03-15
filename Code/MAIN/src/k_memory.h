@@ -9,7 +9,6 @@
 #define K_MEM_H_
 
 #include "k_rtx.h"
-#include "forward_list.h"
 
 /* ----- Definitions ----- */
 #define RAM_END_ADDR 0x10008000
