@@ -136,7 +136,7 @@
             <RestoreMemoryDisplay>1</RestoreMemoryDisplay>
             <RestoreFunctions>0</RestoreFunctions>
             <RestoreToolbox>1</RestoreToolbox>
-            <RestoreTracepoints>1</RestoreTracepoints>
+            <RestoreTracepoints>0</RestoreTracepoints>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
           <TargetSelection>0</TargetSelection>
@@ -348,7 +348,7 @@
             <uSurpInc>0</uSurpInc>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>DEBUG_0, DEBUG_1</Define>
+              <Define>DEBUG_0, DEBUG_1, DEBUG_HK</Define>
               <Undefine></Undefine>
               <IncludePath></IncludePath>
             </VariousControls>
@@ -430,6 +430,11 @@
               <FileName>uart_irq.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\uart_irq.c</FilePath>
+            </File>
+            <File>
+              <FileName>sys_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\sys_proc.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -540,6 +545,11 @@
               <FileName>uart_def.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\src\uart_def.h</FilePath>
+            </File>
+            <File>
+              <FileName>sys_proc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\sys_proc.h</FilePath>
             </File>
             <File>
               <FileName>utils.h</FileName>

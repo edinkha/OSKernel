@@ -19,6 +19,7 @@ ForwardList* heap; // Pointer to the heap
 PriorityQueue* ready_pq; // Ready queue to hold the PCBs
 PriorityQueue* blocked_memory_pq; // Blocked priority queue to hold PCBs blocked due to memory
 PriorityQueue* blocked_waiting_pq; // Blocked priority queue to hold PCBs blocked due to waiting for a message
+ForwardList* delayed_messages; // List of delayed messages
 
 /**
  * @brief: Initialize RAM as follows:
@@ -64,7 +65,7 @@ void memory_init(void)
   
 	for ( i = 0; i < NUM_PROCS; i++ ) {
 		gp_pcbs[i] = (PCB *)p_end;
-		p_end += sizeof(PCB); 
+		p_end += sizeof(PCB);
 	}
 #ifdef DEBUG_0  
 	printf("gp_pcbs[0] = 0x%x \r\n", gp_pcbs[0]);
@@ -89,6 +90,11 @@ void memory_init(void)
 	blocked_waiting_pq = (PriorityQueue *)p_end;
 	p_end += sizeof(PriorityQueue);
 	init_pq(blocked_waiting_pq);
+
+	// Allocate memory for the list of delayed messages
+	delayed_messages = (ForwardList*)p_end; 
+	p_end += sizeof(ForwardList);
+	init(delayed_messages);
   
 	/* allocate memory for the heap */
 #ifdef DEBUG_0
@@ -144,7 +150,10 @@ U32 *alloc_stack(U32 size_b)
 	return sp;
 }
 
-void *k_request_memory_block(void) {
+void *k_request_memory_block(void)
+{
+	__disable_irq(); // atomic(on)
+
 #ifdef DEBUG_0 
 	printf("k_request_memory_block: entering...\r\n");
 #endif
@@ -160,35 +169,64 @@ void *k_request_memory_block(void) {
 	#ifdef DEBUG_0 
 		printf("k_request_memory_block: returning new block...\r\n");
 	#endif
-	//Pop a memory block off the heap and return a pointer to it
-	return (void *) pop_front(heap);
+	
+	__enable_irq(); // atomic(off)
+	
+	// TODO: VERIFY THIS WORKS
+	//Pop a memory block off the heap and return a pointer to its content
+	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
 }
 
-int k_release_memory_block(void *p_mem_blk) {
-	QNode* to_unblock;
+/**
+ * The non-blocking version of k_request_memory_block for i-processes
+ */
+void* ki_request_memory_block(void)
+{
+	// If there are no memory blocks left on the heap, return a null pointer
+	if (empty(heap)) {
+		return (void*)0;
+	}
+	// TODO: VERIFY THIS WORKS
+	// Pop a memory block off the heap and return a pointer to its content
+	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
+}
+
+int k_release_memory_block(void *p_mem_blk)
+{
+	__disable_irq(); // atomic(on)
+
 #ifdef DEBUG_0 
 	printf("k_release_memory_block: releasing block @ 0x%x\r\n", p_mem_blk);
 #endif
 	//Return an error if the input memory block is not valid
 	if (p_mem_blk == NULL) {
+		__enable_irq();
 		return RTX_ERR;
 	}
 
-	//Put the memory block back onto the heap
-	push_front(heap, (ListNode *)p_mem_blk);
+	// TODO: VERIFY THIS WORKS
+	// Put the memory block back onto the heap
+	push_front(heap, (ListNode*)((U8*)p_mem_blk - SZ_MEM_BLOCK_HEADER));
 
-	//If the blocked queue is not empty, take the first process and put it on the ready queue
-	//(since now there is memory available for that process to continue)
+	// If the blocked queue is not empty, take the first process and put it on the ready queue
+	// (since now there is memory available for that process to continue)
 	if (!pq_empty(blocked_memory_pq)) {
-		to_unblock = pop(blocked_memory_pq);
-		((PCB *)to_unblock)->m_state = READY;
+		PCB* proc_to_unblock = (PCB*)pop(blocked_memory_pq);
+		proc_to_unblock->m_state = READY;
 	#ifdef DEBUG_0 
-		printf("unblocking process ID %x\r\n", ((PCB *)to_unblock)->m_pid);
+		printf("unblocking process ID %x\r\n", proc_to_unblock->m_pid);
 	#endif
-		push(ready_pq, to_unblock, ((PCB *)to_unblock)->m_priority);
-		// handle preemption
-		k_release_processor();
+		push(ready_pq, (QNode*)proc_to_unblock, proc_to_unblock->m_priority);
+		// Only preempt if the current process is not an i-process
+		if (!gp_current_process->m_is_iproc) {
+			k_release_processor();
+		}
 	}	
+	
+	// Only re-enable irq if the current process is not an i-process
+	if (!gp_current_process->m_is_iproc) {
+		__enable_irq(); // atomic(off)
+	}
 	
 	return RTX_OK;
 }

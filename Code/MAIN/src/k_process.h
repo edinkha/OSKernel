@@ -26,4 +26,7 @@ extern void set_test_procs(void);		/* test process initial set up */
 int k_get_process_priority(int pid);
 int k_set_process_priority(int pid, int priority);
 
+int k_send_message(int process_id, void *message);
+void *k_receive_message(int* sender_id);
+
 #endif /* ! K_PROCESS_H_ */

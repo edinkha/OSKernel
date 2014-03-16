@@ -30,7 +30,8 @@
 		The code has not been tested on the board. To run it on the board, you will need to increase the delay.
 */
 
-#include "rtx.h"
+//#include "rtx.h"	//== uncomment
+#include "k_rtx.h"	//== remove
 #include "uart_polling.h"
 #include "usr_proc.h"
 
@@ -41,14 +42,15 @@
 /* initialization table item */
 PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
-void set_test_procs() {
+void set_test_procs()
+{
 	int i;
-	for( i = 0; i < NUM_TEST_PROCS; i++ ) {
-		g_test_procs[i].m_pid=(U32)(i+1);
-		g_test_procs[i].m_priority=LOWEST;
-		g_test_procs[i].m_stack_size=0x100;
+	for (i = 0; i < NUM_TEST_PROCS; i++) {
+		g_test_procs[i].m_pid = (U32)(i + 1);
+		g_test_procs[i].m_priority = LOWEST;
+		g_test_procs[i].m_stack_size = USR_SZ_STACK;
 	}
-  
+	
 	g_test_procs[0].mpf_start_pc = &proc1;
 	g_test_procs[1].mpf_start_pc = &proc2;
 }
