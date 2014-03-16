@@ -32,8 +32,7 @@
 /* end of NXP uart.h file reference */
 
 
-/* convenient macro for bit operation */
-#define BIT(X)    ( 1 << (X) )
+#define BIT(X)(1 << (X))/* convenient macro for bit operation */
 
 /* 
    8 bits, no Parity, 1 Stop bit

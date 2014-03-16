@@ -8,6 +8,9 @@
 #include <LPC17xx.h>
 #include "uart.h"
 #include "uart_polling.h"
+#include "k_rtx.h"
+#include "k_process.h"
+extern U32 g_switch_flag;
 
 /**
  * @brief: initialize the n_uart
@@ -139,3 +142,29 @@ int uart_irq_init(int n_uart) {
 	pUart->THR = '\0';
 	return 0;
 }
+
+/**
+ * @brief: use CMSIS ISR for UART0 IRQ Handler
+ * NOTE: This example shows how to save/restore all registers rather than just
+ *       those backed up by the exception stack frame. We add extra
+ *       push and pop instructions in the assembly routine. 
+ *       The actual c_UART0_IRQHandler does the rest of irq handling
+ */
+__asm void UART0_IRQHandler(void)
+{
+	CPSID I ; disable interrupts
+	PRESERVE8
+	IMPORT UART_IPROC
+ 	IMPORT k_release_processor
+ 	PUSH{r4-r11, lr}
+ 	BL UART_IPROC
+ 	LDR R4, =__cpp(&g_switch_flag)
+ 	LDR R4, [R4]
+ 	MOV R5, #0     
+ 	CMP R4, R5
+ 	BEQ  RESTORE    ; if g_switch_flag == 0, then restore the process that was interrupted
+ 	BL k_release_processor  ; otherwise (i.e g_switch_flag == 1, then switch to the other process)
+RESTORE
+	CPSIE I ; enable interrupts
+	POP{r4-r11, pc}
+} 

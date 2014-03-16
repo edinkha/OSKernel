@@ -18,7 +18,7 @@
 #define RTX_OK  0
 #define NULL 0
 #define NUM_TEST_PROCS 2
-#define NUM_PROCS 6
+#define NUM_PROCS 8
 
 #define USR_SZ_MEM_BLOCK 0x80    /* heap memory block size is 128 B */
 #define SZ_MEM_BLOCK_HEADER 0x10 /* memory block header size is 16 B */
@@ -58,6 +58,7 @@
 #define DEFAULT 0
 #define KCD_REG 1
 #define CRT_DISPLAY 2
+#define USER_INPUT 3
 
 /*----- Types -----*/
 typedef unsigned char U8;

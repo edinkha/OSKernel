@@ -30,8 +30,7 @@
 		The code has not been tested on the board. To run it on the board, you will need to increase the delay.
 */
 
-//#include "rtx.h"	//== uncomment
-#include "k_rtx.h"	//== remove
+#include "rtx.h"
 #include "uart_polling.h"
 #include "usr_proc.h"
 #include "utils.h"

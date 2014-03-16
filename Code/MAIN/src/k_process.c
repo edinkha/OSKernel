@@ -65,6 +65,12 @@ void process_init()
 		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
 
+	// KCD process initialization
+	g_proc_table[++i].m_pid = PID_KCD;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &KCD;
+	
 	// CRT process initialization
 	g_proc_table[++i].m_pid = PID_CRT;
 	g_proc_table[i].m_priority = HIGH;
@@ -114,6 +120,10 @@ void process_init()
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
+	/* set i-proc states to READY */
+	for (i = NUM_PROCS - 1; i < NUM_PROCS; i++) {
+		gp_pcbs[i]->m_state = READY;
+	}
 	
 }
 
@@ -128,7 +138,7 @@ PCB* scheduler(void)
 	PCB* next_pcb;
 	PCB* top_pcb = (PCB*)top(ready_pq);
 	
-	if ((top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
+  if (gp_current_process == NULL || gp_current_process->m_is_iproc || (top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
 		next_pcb = (PCB*)pop(ready_pq);
 	}
 	else {
@@ -173,7 +183,9 @@ int process_switch(PCB* p_pcb_old)
 {
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
+			if (p_pcb_old->m_is_iproc != 1) {
 			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
+			}
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
@@ -192,14 +204,19 @@ int process_switch(PCB* p_pcb_old)
 			__enable_irq();
 			return RTX_ERR;
 		}
-		
+		// TODO: REALLY THINK THIS PART THROUGH WITH CURRENT SETUP
+		//if (p_pcb_old->m_is_iproc != 1 && g_switch_flag) {
+		if (p_pcb_old->m_is_iproc != 1) {
 		p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 		configure_old_pcb(p_pcb_old); //Configure the old PCB
+		}
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
-		__enable_irq();
-		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
+		if (gp_current_process->m_is_iproc != 1) {
+			__enable_irq();
+			__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
+		}
 	}
 
 	return RTX_OK;
