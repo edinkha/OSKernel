@@ -29,11 +29,6 @@ U32 g_switch_flag = 0;          /* whether to continue to run the process before
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
-// sys procs
-extern void CRT(void);
-extern void UART0_IRQHandler(void);
-extern void TIMER0_IRQHandler(void);
-
 
 /* The null process */
 void nullproc(void)
@@ -52,14 +47,16 @@ void process_init()
 	int i;
 	U32 *sp;
   
-  /* fill out the initialization table */
+	/* fill out the initialization table */
+
 	set_test_procs();
-	
-	// null process initialization
-	g_proc_table[0].m_pid = PID_NULL;
-	g_proc_table[0].m_priority = LOWEST + 1; // Give the null process a priority lower than the lowest priority
+
+	// Wall Clock process initialization
+	// Want to do this first so it gets run first so it can register itself with the KCD
+	g_proc_table[0].m_pid = PID_CLOCK;
+	g_proc_table[0].m_priority = HIGH;
 	g_proc_table[0].m_stack_size = USR_SZ_STACK;
-	g_proc_table[0].mpf_start_pc = &nullproc;
+	g_proc_table[0].mpf_start_pc = &proc_wall_clock;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
 		g_proc_table[i+1].m_pid = g_test_procs[i].m_pid;
@@ -68,29 +65,32 @@ void process_init()
 		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
 
-	// TODO: add the Wall Clock process to the g_proc_table
-	// Perhaps change [NUM_TEST_PROCS + #] to [++i] then [i] for each process (makes it simpler to add successive processes)
-	
 	// CRT process initialization
-	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
-	g_proc_table[NUM_TEST_PROCS + 1].m_priority = HIGH;
-	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = USR_SZ_STACK;
-	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &CRT;
-	
-	// UART i-process initialization
-	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
-	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
-	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = USR_SZ_STACK;
-	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART0_IRQHandler;
+	g_proc_table[++i].m_pid = PID_CRT;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &CRT;
 	
 	// TIMER i-process initialization
-	g_proc_table[NUM_TEST_PROCS + 3].m_pid = PID_TIMER_IPROC;
-	g_proc_table[NUM_TEST_PROCS + 3].m_priority = HIGH;
-	g_proc_table[NUM_TEST_PROCS + 3].m_stack_size = USR_SZ_STACK;
-	g_proc_table[NUM_TEST_PROCS + 3].mpf_start_pc = &timer_i_process;
-  
+	g_proc_table[++i].m_pid = PID_TIMER_IPROC;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &timer_i_process;
+	
+	// UART i-process initialization
+	g_proc_table[++i].m_pid = PID_UART_IPROC;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &UART0_IRQHandler;
+
+	// null process initialization
+	g_proc_table[++i].m_pid = PID_NULL;
+	g_proc_table[i].m_priority = LOWEST + 1; // Give the null process a priority lower than the lowest priority
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &nullproc;
+	
 	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
-	for ( i = 0; i < NUM_PROCS; i++ ) {
+	for (i = 0; i < NUM_PROCS; i++) {
 		int j; // Used in the loop at the bottom of this loop
 
 		gp_pcbs[i]->m_pid = g_proc_table[i].m_pid;
@@ -109,8 +109,8 @@ void process_init()
 		gp_pcbs[i]->mp_sp = sp;
 	}
 	
-	/* put each process (minus null process and i-processes) in the ready queue */
-	for (i = 1; i < NUM_PROCS - 2; i++) { // (-2 for the two i-procs)
+	/* put each process (minus null process and 2 i-processes) in the ready queue */
+	for (i = 0; i < NUM_PROCS - 3; i++) {
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}

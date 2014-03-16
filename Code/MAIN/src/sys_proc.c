@@ -11,6 +11,8 @@
 #include "uart_polling.h"
 #include "k_process.h"
 #include "k_memory.h"
+#include "string.h"
+#include "utils.h"
 #ifdef DEBUG_0
 #include "printf.h"
 #endif
@@ -193,5 +195,96 @@ void CRT(void)
 		} else {
 			release_memory_block((void*)received_message);
 		}
+	}
+}
+
+/**
+ * @brief The Wall Clock process.
+ *
+ * The first time the wall clock is run, it registers itself with the KCD, then goes into
+ * the eternal loop where it gets blocked waiting for a message. Each time the wall clock
+ * gets a new message, it performs the necessary actions and if it is in a "running" state,
+ * it sends a message to the CRT to display the current time. Finally, the wall clock releases
+ * the memory block of the message it received.
+ */
+void proc_wall_clock()
+{
+	int hours;
+	int minutes;
+	int seconds;
+	int is_running = 0; // Initialize to 0 (meaning false)
+	int sender_id;
+	MSG_BUF* msg_received;
+	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
+	
+	// Tell the KCD to register the "%W" command with the wall clock process
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'W';
+	msg_to_send->mtext[2] = '\0';
+	send_message(PID_KCD, (void*)msg_to_send);
+
+	while (1) {
+		// Receive message from KCD (command input), or timer (to display time)
+		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		
+		if (sender_id == PID_KCD) {
+			if (msg_received->mtext[2] == 'T') {
+				is_running = 0;
+			}
+			else if (msg_received->mtext[2] == 'R') {
+				// Reset the time and set the wall clock to running
+				hours = minutes = seconds = 0;
+				is_running = 1;
+			}
+			else if (msg_received->mtext[2] == 'S'
+			         && msg_received->mtext[3] == ' '
+			         && msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '2'
+			         && msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
+			         && msg_received->mtext[6] == ':'
+			         && msg_received->mtext[7] >= '0' && msg_received->mtext[7] <= '5'
+			         && msg_received->mtext[8] >= '0' && msg_received->mtext[8] <= '9'
+			         && msg_received->mtext[9] == ':'
+			         && msg_received->mtext[10] >= '0' && msg_received->mtext[10] <= '5'
+			         && msg_received->mtext[11] >= '0' && msg_received->mtext[11] <= '9') {
+				// Use the input time to set the current time variables and set the wall clock to running
+				hours = ctoi(msg_received->mtext[4]) * 10 + ctoi(msg_received->mtext[5]);
+				minutes = ctoi(msg_received->mtext[7]) * 10 + ctoi(msg_received->mtext[8]);
+				seconds = ctoi(msg_received->mtext[10]) * 10 + ctoi(msg_received->mtext[11]);
+				is_running = 1;
+			}
+		}
+
+		if (is_running) {
+			// Send a message to the CRT to display the current time
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = CRT_DISPLAY;
+			
+			msg_to_send->mtext[0] = itoc(hours / 10);
+			msg_to_send->mtext[1] = itoc(hours % 10);
+			msg_to_send->mtext[2] = ':';
+			msg_to_send->mtext[3] = itoc(minutes / 10);
+			msg_to_send->mtext[4] = itoc(minutes % 10);
+			msg_to_send->mtext[5] = ':';
+			msg_to_send->mtext[6] = itoc(seconds / 10);
+			msg_to_send->mtext[7] = itoc(seconds % 10);
+			msg_to_send->mtext[8] = '\0';
+			
+			send_message(PID_CRT, (void*)msg_to_send);
+			
+			// Set the time for when the wall clock is run again (which should be in exactly 1 second)
+			if (++seconds >= 60) {
+				seconds = 0;
+				if (++minutes >= 60) {
+					minutes = 0;
+					if (++hours >= 24) {
+						hours = 0;
+					}
+				}
+			}
+		}
+		
+		// Release the memory of the received message
+		release_memory_block(msg_received);
 	}
 }
