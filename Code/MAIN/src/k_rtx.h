@@ -18,7 +18,7 @@
 
 #define NULL 0
 #define NUM_TEST_PROCS 2
-#define NUM_PROCS 5
+#define NUM_PROCS 6
 
 #define USR_SZ_MEM_BLOCK 0x80	/* heap memory block size is 128B     */
 #define SZ_MEM_BLOCK_HEADER 0x0C /* memory block header size is 12B */
@@ -58,6 +58,7 @@
 #define DEFAULT 0
 #define KCD_REG 1
 #define CRT_DISPLAY 2
+#define USER_INPUT 3
 
 /*----- Types -----*/
 typedef unsigned char U8;
@@ -104,14 +105,14 @@ typedef struct msg_envelope
 	U32 sender_pid;
 	U32 destination_pid;
 	int mtype;              /* user defined message type */
-	U8 mtext[1];            /* body of the message */
+	char mtext[1];            /* body of the message */
 } MSG_ENVELOPE;
 
 /* message buffer */
 typedef struct msgbuf
 {
 	int mtype;              /* user defined message type */
-	U8 mtext[1];            /* body of the message */
+	char mtext[1];            /* body of the message */
 } MSG_BUF;
 
 typedef struct mem_block

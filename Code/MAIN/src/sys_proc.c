@@ -9,6 +9,7 @@
 #include "uart_polling.h"
 #include "k_process.h"
 #include "k_memory.h"
+#include "string.h"
 #ifdef DEBUG_0
 #include "printf.h"
 #endif
@@ -16,11 +17,10 @@
 #include <assert.h>
 #endif
 
-U8 g_buffer[];
-U8 *gp_buffer = g_buffer;
-U8 g_send_char = 0;
-U8 g_char_in;
-U8 g_char_out;
+char g_buffer[];
+char *gp_buffer = g_buffer;
+char g_char_in;
+char g_char_out;
 
 extern U32 g_switch_flag;
 extern PCB *gp_current_process;
@@ -93,23 +93,34 @@ void UART_IPROC(void)
 				print(blocked_waiting_pq);
 			}
 	#endif // DEBUG_HK
-			if (g_char_in == '\r') {
-				// send g_buffer string to KCD
-			}
-			else if (g_char_in != '\0') {
-				// send char to CRT to echo it back to console
+// 			if (g_char_in == '\r') {
+// 				message_to_send = (MSG_BUF*)k_request_memory_block();
+// 				__disable_irq();
+// 				//message_to_send->mtype = DEFAULT;
+// 				message_to_send->mtype = KCD_REG;
+// 				strcpy(message_to_send->mtext, g_buffer);
+// 				k_send_message(PID_KCD, (void*)message_to_send);
+// 				__disable_irq();
+// 			}
+// 			else if (g_char_in != '\0') {
+// 				// send char to CRT to echo it back to console
+// 				message_to_send = (MSG_BUF*)k_request_memory_block();
+// 				__disable_irq();
+// 				message_to_send->mtype = CRT_DISPLAY;
+// 				message_to_send->mtext[0] = g_char_in;
+// 				k_send_message(PID_CRT, (void*)message_to_send);
+// 				__disable_irq();
+			// send char to KCD, which will handle parsing and send each character to CRT for printing
 				message_to_send = (MSG_BUF*)k_request_memory_block();
 				__disable_irq();
-				//message_to_send->mtype = 5;
-				message_to_send->mtype = CRT_DISPLAY;
+				message_to_send->mtype = USER_INPUT;
 				message_to_send->mtext[0] = g_char_in;
-				k_send_message(PID_CRT, (void*)message_to_send);
+				message_to_send->mtext[1] = '\0';
+				k_send_message(PID_KCD, (void*)message_to_send);
 				__disable_irq();
-				
 				// add character to g_buffer string
-				//g_buffer += g_char_in;
-			}
-			g_send_char = 1;
+				//strcat(g_char_in, g_buffer);
+			//}
 	
 		} else if (IIR_IntId & IIR_THRE) {
 			g_switch_flag = 0;
@@ -119,7 +130,7 @@ void UART_IPROC(void)
 			received_message = (MSG_BUF*)k_receive_message((int*)0);
 			__disable_irq();
 			gp_buffer = received_message->mtext;
-			if (*gp_buffer != '\0' ) {
+			while (*gp_buffer != '\0' ) {
 				g_char_out = *gp_buffer;
 	#ifdef DEBUG_0	
 				// you could use the printf instead
@@ -135,8 +146,6 @@ void UART_IPROC(void)
 			__disable_irq();
 			pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
 			//pUart->THR = '\0';
-			g_send_char = 0;
-			g_switch_flag = 0;
 			gp_buffer = g_buffer;		
 			unswitched_proc = old_proc;
 			old_proc = gp_current_process;
@@ -167,6 +176,113 @@ void CRT(void)
 			pUart->IER ^= IER_THRE;
 		} else {
 			release_memory_block((void*)received_message);
+		}
+	}
+}
+
+void KCD(void)
+{
+	typedef struct cmd 
+	{ 
+		char cmd_id[2];	      /* command identifier  */
+		U32 reg_proc_id;			/* process id of registered process */
+	} CMD;
+	
+	MSG_BUF* received_message;
+	MSG_BUF* message_to_send;
+	char user_input_str[1];
+	char* user_input_str_p = user_input_str;
+	CMD registered_commands[10];
+	U32 current_num_commands = 0;
+	int sender_id;
+	char to_parse[1];
+	char* to_parse_p = to_parse;
+	
+	while(1) {
+		// grab the message from the KCD proc message queue
+		received_message = (MSG_BUF*)receive_message(&sender_id);
+		release_memory_block((void*)received_message);
+		if (received_message->mtype == USER_INPUT) {
+			if (received_message->mtext[0] == '\r') {
+				message_to_send = (MSG_BUF*)request_memory_block();
+				message_to_send->mtype = CRT_DISPLAY;
+				message_to_send->mtext[0] = '\r';
+				message_to_send->mtext[1] = '\n';
+				message_to_send->mtext[2] = '\0';
+				send_message(PID_CRT, (void*)message_to_send);
+				user_input_str_p = user_input_str;
+			} else if (received_message->mtext[0] == '\n') {
+				// no-op
+			} else {
+				*user_input_str_p = received_message->mtext[0];
+				message_to_send = (MSG_BUF*)request_memory_block();
+				message_to_send->mtype = CRT_DISPLAY;
+				message_to_send->mtext[0] = *user_input_str_p;
+				message_to_send->mtext[1] = '\0';
+				send_message(PID_CRT, (void*)message_to_send);
+				user_input_str_p++;
+			}
+		}
+		else if (received_message->mtype == KCD_REG) {
+			int i = 1;
+			if (received_message->mtext[0] != '%') {	
+				char error_str[] = "KCD Registration Commands must begin with the % character.\n\r";
+				message_to_send = (MSG_BUF*)request_memory_block();
+				message_to_send->mtype = CRT_DISPLAY;
+				strcpy(message_to_send->mtext, error_str);
+				send_message(PID_CRT, (void*)message_to_send);
+			}
+			while (received_message->mtext[i] != '\0') {
+				registered_commands[current_num_commands].cmd_id[i-1] = received_message->mtext[i];
+			}
+			// null-terminate the id
+			registered_commands[current_num_commands].cmd_id[i-1] = '\0';
+			registered_commands[current_num_commands].reg_proc_id = sender_id;
+			current_num_commands++;
+		}
+		else if (received_message->mtype != KCD_REG) {
+			int is_match = 1, num_com;
+			if (received_message->mtype == USER_INPUT) {
+				to_parse_p = user_input_str;
+			} else {
+				int i = 0;
+				to_parse_p = &received_message->mtext[0];
+				message_to_send = (MSG_BUF*)request_memory_block();
+				message_to_send->mtype = CRT_DISPLAY;
+				while (*to_parse_p != '\0') {
+					message_to_send->mtext[i] = *to_parse_p;
+					to_parse_p++;
+					i++;
+				}
+				message_to_send->mtext[i] = '\0';
+				send_message(PID_CRT, (void*)message_to_send);
+				to_parse_p = &received_message->mtext[0];
+			}
+			for (num_com = 0; num_com < 10; num_com++) {
+				int c = 0;
+				while (*to_parse_p != '\0') {
+					if (registered_commands[num_com].cmd_id[c] != *to_parse_p) {
+						is_match = 0;
+						break;
+					}
+					c++;
+					to_parse_p++;
+				}
+				
+				if (is_match && *to_parse_p == registered_commands[num_com].cmd_id[c]) {
+					int j = 0;
+					char* index = to_parse;
+					message_to_send = (MSG_BUF*)request_memory_block();
+					message_to_send->mtype = DEFAULT;
+					while (*index != '\0') {
+						message_to_send->mtext[j] = *index;
+						index++;
+						j++;
+					}
+					message_to_send->mtext[j] = '\0';
+					send_message(registered_commands[num_com].reg_proc_id, (void*)message_to_send);
+				}
+			}
 		}
 	}
 }

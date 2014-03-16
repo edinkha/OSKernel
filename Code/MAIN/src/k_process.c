@@ -30,6 +30,7 @@ PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
 // sys procs
+extern void KCD(void);
 extern void CRT(void);
 extern void UART_IPROC(void);
 
@@ -68,17 +69,23 @@ void process_init()
 		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
 	
-	// CRT process initialization
-	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
+	// KCD process initialization
+	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_KCD;
 	g_proc_table[NUM_TEST_PROCS + 1].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 1].m_stack_size = USR_SZ_STACK;
-	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &CRT;
+	g_proc_table[NUM_TEST_PROCS + 1].mpf_start_pc = &KCD;
 	
-	// UART i-process initialization
-	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_UART_IPROC;
+	// CRT process initialization
+	g_proc_table[NUM_TEST_PROCS + 2].m_pid = PID_CRT;
 	g_proc_table[NUM_TEST_PROCS + 2].m_priority = HIGH;
 	g_proc_table[NUM_TEST_PROCS + 2].m_stack_size = USR_SZ_STACK;
-	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &UART_IPROC;
+	g_proc_table[NUM_TEST_PROCS + 2].mpf_start_pc = &CRT;
+	
+	// UART i-process initialization
+	g_proc_table[NUM_TEST_PROCS + 3].m_pid = PID_UART_IPROC;
+	g_proc_table[NUM_TEST_PROCS + 3].m_priority = HIGH;
+	g_proc_table[NUM_TEST_PROCS + 3].m_stack_size = USR_SZ_STACK;
+	g_proc_table[NUM_TEST_PROCS + 3].mpf_start_pc = &UART_IPROC;
   
 	/* initialize exception stack frame (i.e. initial context) and memory queue for each process */
 	for ( i = 0; i < NUM_PROCS; i++ ) {

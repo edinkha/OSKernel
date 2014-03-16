@@ -44,7 +44,8 @@
 /* Message Types */
 #define DEFAULT 0
 #define KCD_REG 1
- #define CRT_DISPLAY 2
+#define CRT_DISPLAY 2
+#define USER_INPUT 3
 
 /* ----- Types ----- */
  typedef unsigned char U8;
@@ -63,7 +64,7 @@ typedef struct proc_init
 typedef struct msgbuf
 {
 	int mtype;              /* user defined message type */
-	U8 mtext[1];          /* body of the message */
+	char mtext[1];          /* body of the message */
 } MSG_BUF;
 
 /* ----- RTX User API ----- */
