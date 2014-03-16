@@ -67,6 +67,9 @@ void process_init()
 		g_proc_table[i+1].m_stack_size = g_test_procs[i].m_stack_size;
 		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
+
+	// TODO: add the Wall Clock process to the g_proc_table
+	// Perhaps change [NUM_TEST_PROCS + #] to [++i] then [i] for each process (makes it simpler to add successive processes)
 	
 	// CRT process initialization
 	g_proc_table[NUM_TEST_PROCS + 1].m_pid = PID_CRT;
