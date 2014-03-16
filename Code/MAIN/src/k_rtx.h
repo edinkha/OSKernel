@@ -105,14 +105,14 @@ typedef struct msg_envelope
 	int destination_pid;
 	uint32_t send_time;
 	int mtype;              /* user defined message type */
-	U8 mtext[1];            /* body of the message */
+	char mtext[1];            /* body of the message */
 } MSG_ENVELOPE;
 
 /* message buffer */
 typedef struct msgbuf
 {
 	int mtype;              /* user defined message type */
-	U8 mtext[1];            /* body of the message */
+	char mtext[1];            /* body of the message */
 } MSG_BUF;
 
 typedef struct mem_block
