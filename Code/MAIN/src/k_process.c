@@ -171,7 +171,6 @@ void configure_old_pcb(PCB* p_pcb_old)
  */
 int process_switch(PCB* p_pcb_old)
 {
-	__disable_irq();
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
 			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
@@ -202,8 +201,7 @@ int process_switch(PCB* p_pcb_old)
 		__enable_irq();
 		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 	}
-	
-	//__enable_irq();
+
 	return RTX_OK;
 }
 
@@ -223,14 +221,15 @@ int k_release_processor(void)
 	
 	if (gp_current_process == NULL) {
 		gp_current_process = p_pcb_old; // revert back to the old process
-		__enable_irq();
 		return RTX_ERR;
 	}
 	if (p_pcb_old == NULL) {
 		p_pcb_old = gp_current_process;
 	}
 	process_switch(p_pcb_old);
+	
 	__enable_irq();
+	
 	return RTX_OK;
 }
 
@@ -243,7 +242,6 @@ PCB* get_proc_by_pid(int pid)
 	int i;
 	for (i = 0; i < NUM_PROCS; i++) {
 		if (gp_pcbs[i]->m_pid == pid) {
-			__enable_irq();
 			return gp_pcbs[i];
 		}
 	}
@@ -300,8 +298,10 @@ int k_set_process_priority(int pid, int priority)
 		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
 			k_release_processor();
+			__disable_irq();
 			break;
 	}
+	
 	__enable_irq();
 	return RTX_OK;
 }
@@ -319,7 +319,6 @@ int k_send_message(int process_id, void *message){
 	
 	// error checking
 	if (message == NULL || process_id < 0) {
-		__enable_irq();
 		return RTX_ERR;
 	}
 	
@@ -333,7 +332,6 @@ int k_send_message(int process_id, void *message){
 
 	// error checking
 	if (receiving_proc == NULL) {
-		__enable_irq();
 		return RTX_ERR;
 	}
 	
@@ -346,7 +344,6 @@ int k_send_message(int process_id, void *message){
 	// to READY, then release the processor so the receiving process has a chance to run
 	if (receiving_proc->m_state == BLOCKED_ON_RECEIVE) {
 		if (!remove_at_priority(blocked_waiting_pq, (QNode*)receiving_proc, receiving_proc->m_priority)) {
-			__enable_irq();
 			return RTX_ERR;
 		}
 		push(ready_pq, (QNode*)receiving_proc, receiving_proc->m_priority);
@@ -385,7 +382,6 @@ void *k_receive_message(int* sender_id)
 
 	// Get the first envelope in the current process's message queue
 	envelope = (MSG_ENVELOPE*)dequeue(&gp_current_process->m_message_q);
-
 	*sender_id = envelope->sender_pid; // Set the sender's ID
 
 	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
