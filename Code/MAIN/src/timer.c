@@ -165,6 +165,7 @@ void timer_i_process()
 			message->mtype = DEFAULT;
 			message->mtext[0] = '\0';
 			k_send_message(PID_CLOCK, message);
+			__disable_irq();
 		}
 	}
 
@@ -172,5 +173,6 @@ void timer_i_process()
 	while (!empty(delayed_messages) && ((MSG_ENVELOPE*)delayed_messages->front)->send_time <= g_timer_count) {
 		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)pop_front(delayed_messages);
 		k_send_message(envelope->destination_pid, (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER));
+		__disable_irq();
 	}
 }

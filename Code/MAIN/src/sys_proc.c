@@ -95,20 +95,20 @@ void UART_IPROC(void)
 		}
 #endif // DEBUG_HK
 			// send char to KCD, which will handle parsing and send each character to CRT for printing
-			message_to_send = (MSG_BUF*)k_request_memory_block();
-				__disable_irq();
-				message_to_send->mtype = USER_INPUT;
+			message_to_send = (MSG_BUF*)ki_request_memory_block();
+			__disable_irq();
+			message_to_send->mtype = USER_INPUT;
 			message_to_send->mtext[0] = g_char_in;
-				message_to_send->mtext[1] = '\0';
-				k_send_message(PID_KCD, (void*)message_to_send);
-				__disable_irq();
-	
+			message_to_send->mtext[1] = '\0';
+			k_send_message(PID_KCD, (void*)message_to_send);
+			__disable_irq();
+
 	} else if (IIR_IntId & IIR_THRE) {
 			g_switch_flag = 0;
 			old_proc = gp_current_process;
 			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
 	/* THRE Interrupt, transmit holding register becomes empty */
-		received_message = (MSG_BUF*)k_receive_message((int*)0);
+		received_message = (MSG_BUF*)ki_receive_message((int*)0);
 			__disable_irq();
 		gp_buffer = received_message->mtext;
 			while (*gp_buffer != '\0' ) {
@@ -272,7 +272,6 @@ void KCD(void)
 	while(1) {
 		// grab the message from the KCD proc message queue
 		received_message = (MSG_BUF*)receive_message(&sender_id);
-		release_memory_block((void*)received_message);
 		if (received_message->mtype == USER_INPUT) {
 			if (received_message->mtext[0] == '\r') {
 				message_to_send = (MSG_BUF*)request_memory_block();
@@ -305,6 +304,7 @@ void KCD(void)
 			}
 			while (received_message->mtext[i] != '\0') {
 				registered_commands[current_num_commands].cmd_id[i-1] = received_message->mtext[i];
+				i++;
 			}
 			// null-terminate the id
 			registered_commands[current_num_commands].cmd_id[i-1] = '\0';
@@ -355,5 +355,6 @@ void KCD(void)
 				}
 			}
 		}
+		release_memory_block((void*)received_message);
 	}
 }
