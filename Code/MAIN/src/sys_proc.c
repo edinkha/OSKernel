@@ -181,13 +181,33 @@ void proc_wall_clock()
 	int is_running = 0; // Initialize to 0 (meaning false)
 	int sender_id;
 	MSG_BUF* msg_received;
-	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
+	MSG_BUF* msg_to_send;
 	
-	// Tell the KCD to register the "%W" command with the wall clock process
+	// Tell the KCD to register the "%WR" command with the wall clock process
+	msg_to_send = (MSG_BUF*)request_memory_block();
 	msg_to_send->mtype = KCD_REG;
 	msg_to_send->mtext[0] = '%';
 	msg_to_send->mtext[1] = 'W';
-	msg_to_send->mtext[2] = '\0';
+	msg_to_send->mtext[2] = 'R';
+	msg_to_send->mtext[3] = '\0';
+	send_message(PID_KCD, (void*)msg_to_send);
+
+	// Tell the KCD to register the "%WS" command with the wall clock process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'W';
+	msg_to_send->mtext[2] = 'S';
+	msg_to_send->mtext[3] = '\0';
+	send_message(PID_KCD, (void*)msg_to_send);
+
+	// Tell the KCD to register the "%WT" command with the wall clock process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'W';
+	msg_to_send->mtext[2] = 'T';
+	msg_to_send->mtext[3] = '\0';
 	send_message(PID_KCD, (void*)msg_to_send);
 
 	while (1) {
@@ -269,12 +289,13 @@ int get_command_proc_id(const char input_line[50])
 	}
 
 	for (i = 0; i < num_reg_commands; ++i) {
-		int j = 1;
+		int j = 0;
 		do {
-			if (registered_commands[i].cmd_id[j] == '\0' && (input_line[j] == '\0' || input_line[j] == ' ')) {
+			j++;
+			if (registered_commands[i].cmd_id[j-1] == '\0' && (input_line[j] == '\0' || input_line[j] == ' ')) {
 				return registered_commands[i].reg_proc_id;
 			}
-		} while (input_line[j] == registered_commands[i].cmd_id[j]);
+		} while (input_line[j] == registered_commands[i].cmd_id[j-1]);
 	}
 
 	return RTX_ERR;
