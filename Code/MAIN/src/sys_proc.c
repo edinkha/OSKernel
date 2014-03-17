@@ -32,10 +32,6 @@ extern void configure_old_pcb(PCB* p_pcb_old);
 extern int process_switch(PCB* p_pcb_old);
 LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
 U8 IIR_IntId;	    // Interrupt ID from IIR 		 
-MSG_BUF* received_message;
-MSG_BUF* message_to_send;
-PCB* unswitched_proc;
-PCB* old_proc;
 
 // KCD command structure
 typedef struct cmd 
@@ -70,27 +66,32 @@ void print(PriorityQueue* pqueue)
 // UART initialized in uart_irq.c
 void UART_IPROC(void)
 {
-	
+	MSG_BUF* received_message;
+	MSG_BUF* message_to_send;
+
+	// Save the previously running proccess and set the current process to this i-proc 
+	PCB* old_proc = gp_current_process;
+	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+
 #ifdef DEBUG_0
-		uart1_put_string("Entering UART i-proc\n\r");
+	uart1_put_string("Entering UART i-proc\n\r");
 #endif // DEBUG_0
 	
 	/* Reading IIR automatically acknowledges the interrupt */
 	IIR_IntId = (pUart->IIR) >> 1 ; // skip pending bit in IIR 
-		if (IIR_IntId & IIR_RDA) { // Receive Data Available
-			g_switch_flag = 1;
-			old_proc = gp_current_process;
-			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-			process_switch(old_proc);
+	
+	if (IIR_IntId & IIR_RDA) { // Receive Data Available
+		g_switch_flag = 1;
 		/* read UART. Read RBR will clear the interrupt */
 		g_char_in = pUart->RBR;
-#ifdef DEBUG_0
+		
+	#ifdef DEBUG_0
 		uart1_put_string("Reading a char = ");
 		uart1_put_char(g_char_in);
-		uart1_put_string("\n\r");
-#endif // DEBUG_0
+		uart1_put_string("\r\n");
+	#endif // DEBUG_0
 		
-#ifdef DEBUG_HK
+	#ifdef DEBUG_HK
 		if (g_char_in == '!') {
 			uart1_put_string("! hotkey entered - printing processes on ready queue\n\r");
 			print(ready_pq);
@@ -103,51 +104,44 @@ void UART_IPROC(void)
 			uart1_put_string("# hotkey entered - printing processes on blocked on receive queue\n\r");
 			print(blocked_waiting_pq);
 		}
-#endif // DEBUG_HK
-			// send char to KCD, which will handle parsing and send each character to CRT for printing
-			message_to_send = (MSG_BUF*)ki_request_memory_block();
-			__disable_irq();
-			message_to_send->mtype = USER_INPUT;
-			message_to_send->mtext[0] = g_char_in;
-			message_to_send->mtext[1] = '\0';
-			k_send_message(PID_KCD, (void*)message_to_send);
-			__disable_irq();
-
-	} else if (IIR_IntId & IIR_THRE) {
-			g_switch_flag = 0;
-			old_proc = gp_current_process;
-			gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-	/* THRE Interrupt, transmit holding register becomes empty */
+	#endif // DEBUG_HK
+		
+		// send char to KCD, which will handle parsing and send each character to CRT for printing
+		message_to_send = (MSG_BUF*)ki_request_memory_block();
+		message_to_send->mtype = USER_INPUT;
+		message_to_send->mtext[0] = g_char_in;
+		message_to_send->mtext[1] = '\0';
+		k_send_message(PID_KCD, (void*)message_to_send);
+	}
+	else if (IIR_IntId & IIR_THRE) {
+		g_switch_flag = 0;
+		/* THRE Interrupt, transmit holding register becomes empty */
 		received_message = (MSG_BUF*)ki_receive_message((int*)0);
-			__disable_irq();
 		gp_buffer = received_message->mtext;
-			while (*gp_buffer != '\0' ) {
+		while (*gp_buffer != '\0' ) {
 			g_char_out = *gp_buffer;
-#ifdef DEBUG_0	
-			// you could use the printf instead
+		#ifdef DEBUG_0
 			printf("Writing a char = %c \n\r", g_char_out);
-#endif // DEBUG_0			
+		#endif // DEBUG_0
 			pUart->THR = g_char_out;
 			gp_buffer++;
-			}
-#ifdef DEBUG_0
-			uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
-#endif // DEBUG_0
-			k_release_memory_block((void*)received_message);
-			__disable_irq();
-			pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
-			//pUart->THR = '\0';
-			gp_buffer = g_buffer;		
-			unswitched_proc = old_proc;
-			old_proc = gp_current_process;
-			gp_current_process = unswitched_proc;
-	      
-	} else {  /* not implemented yet */
-#ifdef DEBUG_0
-			uart1_put_string("Should not get here!\n\r");
-#endif // DEBUG_0
-		return;
+		}
+	#ifdef DEBUG_0
+		uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
+	#endif // DEBUG_0
+		k_release_memory_block((void*)received_message);
+		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
+		//pUart->THR = '\0';
+		gp_buffer = g_buffer;		
 	}
+	else {  /* not implemented yet */
+	#ifdef DEBUG_0
+		uart1_put_string("Should not get here!\n\r");
+	#endif // DEBUG_0
+	}
+	
+	//Restore the current process
+	gp_current_process = old_proc;
 }
 
 /**
