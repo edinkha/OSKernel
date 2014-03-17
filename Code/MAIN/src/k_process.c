@@ -138,7 +138,7 @@ PCB* scheduler(void)
 	PCB* next_pcb;
 	PCB* top_pcb = (PCB*)top(ready_pq);
 	
-  if (gp_current_process == NULL || gp_current_process->m_is_iproc || (top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
+  if (gp_current_process == NULL || (top_pcb != NULL && top_pcb->m_priority <= gp_current_process->m_priority) || gp_current_process->m_state == BLOCKED || gp_current_process->m_state == BLOCKED_ON_RECEIVE) {
 		next_pcb = (PCB*)pop(ready_pq);
 	}
 	else {
@@ -166,7 +166,7 @@ void configure_old_pcb(PCB* p_pcb_old)
 
 	//Set the old process's state to READY and put it back in the ready queue if it's not the null process or an i-proc
 	p_pcb_old->m_state = READY;
-	if (p_pcb_old != gp_pcbs[0] && p_pcb_old->m_is_iproc != 1) {
+	if (p_pcb_old->m_pid < PID_TIMER_IPROC && p_pcb_old->m_pid != PID_NULL) {
 		push(ready_pq, (QNode*)p_pcb_old, p_pcb_old->m_priority);
 	}
 	
@@ -183,9 +183,7 @@ int process_switch(PCB* p_pcb_old)
 {
 	if (gp_current_process->m_state == NEW) {
 		if (gp_current_process != p_pcb_old && p_pcb_old->m_state != NEW) {
-			if (p_pcb_old->m_is_iproc != 1) {
 			p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
-			}
 			configure_old_pcb(p_pcb_old); //Configure the old PCB
 		}
 		gp_current_process->m_state = RUNNING;
@@ -204,19 +202,14 @@ int process_switch(PCB* p_pcb_old)
 			__enable_irq();
 			return RTX_ERR;
 		}
-		// TODO: REALLY THINK THIS PART THROUGH WITH CURRENT SETUP
-		//if (p_pcb_old->m_is_iproc != 1 && g_switch_flag) {
-		if (p_pcb_old->m_is_iproc != 1) {
+
 		p_pcb_old->mp_sp = (U32*)__get_MSP(); //Save the old process's sp
 		configure_old_pcb(p_pcb_old); //Configure the old PCB
-		}
 		
 		//Run the new current process
 		gp_current_process->m_state = RUNNING;
-		if (gp_current_process->m_is_iproc != 1) {
-			__enable_irq();
-			__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
-		}
+		__enable_irq();
+		__set_MSP((U32) gp_current_process->mp_sp); //Switch to the new proc's stack
 	}
 
 	return RTX_OK;
@@ -427,11 +420,11 @@ void* ki_receive_message(int* sender_id)
 
 	// Get the first envelope in the current process's message queue
 	envelope = (MSG_ENVELOPE*)dequeue(&gp_current_process->m_message_q);
-	
+
 	if (sender_id != NULL) {
 		*sender_id = envelope->sender_pid;
 	}
-	
+
 	// Return pointer to the msgbuf in the envelope
 	return (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
 }
