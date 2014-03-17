@@ -285,6 +285,11 @@ int k_set_process_priority(int pid, int priority)
 		return RTX_ERR;
 	}
 	
+	if (pid < 1 || pid > 13) {
+		__enable_irq();
+		return RTX_ERR;
+	}
+	
 	pcb = get_proc_by_pid(pid);
 	if (pcb == NULL) {
 		__enable_irq();
@@ -345,7 +350,6 @@ int k_send_message(int process_id, void *message){
 		return RTX_ERR;
 	}
 	
-	// TODO: VERIFY THIS WORKS
 	// enqueue message_envelope onto the message_q of receiving_proc;
 	enqueue(&receiving_proc->m_message_q, (QNode *)envelope);
 
@@ -397,7 +401,6 @@ void *k_receive_message(int* sender_id)
 		*sender_id = envelope->sender_pid;
 	}
 
-	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
 	message = (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
 	
 	__enable_irq(); // atomic(off)
