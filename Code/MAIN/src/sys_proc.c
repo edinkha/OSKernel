@@ -254,7 +254,9 @@ void proc_wall_clock()
 			msg_to_send->mtext[5] = ':';
 			msg_to_send->mtext[6] = itoc(seconds / 10);
 			msg_to_send->mtext[7] = itoc(seconds % 10);
-			msg_to_send->mtext[8] = '\0';
+			msg_to_send->mtext[8] = '\r';
+			msg_to_send->mtext[9] = '\n';
+			msg_to_send->mtext[10] = '\0';
 			
 			send_message(PID_CRT, (void*)msg_to_send);
 			
