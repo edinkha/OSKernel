@@ -5,7 +5,25 @@
  * @date:   2014/03/15
  * NOTE: Each process is in an infinite loop. Processes never terminate.
  *
- * 
+ * Test cases:
+ starting priorities:
+{proc1, ..., proc6} = {HIGH, MEDIUM, MEDIUM, LOWEST, LOWEST, LOW}
+
+proc1 is HIGH priority => immediately blocks on receive message
+proc2 is MEDIUM priority => sends !, @, # hotkeys
+	=> expect on Ready PQ: proc3, proc4, proc5, proc6, wallclock
+	=> expect on Blocked on Mem PQ: none
+	=> expect on Blocked on Receive PQ: UART iProc, Timer iProc, proc1
+	=> set proc4 priority to HIGH
+proc4 is now HIGH priority => sets wall clock to 234:123:12 (i.e. incorrect time)
+	=> expect error message
+	=> sends incorrect KCD_REG to KCD
+	=> expect error message
+	=> sets wall clock to 23:59:55
+	=> expect wall clock to be set correctly
+	=> 
+  => sets priority to LOWEST
+proc3 is MEDIUM priority => sends delayed message to proc5
  */
 
 #include "rtx.h"
@@ -143,7 +161,7 @@ void proc1(void)
 				hot_key2_value = block5_sent_message;
 				hot_key3_value = block6_sent_message;
 				
-				if (wall_clock_set == RTX_OK) {
+				if (wall_clock_set != RTX_OK) {
 					printf("G023_test: test 1 OK\r\n");
 					num_tests_passed++;
 				} else {
@@ -151,7 +169,7 @@ void proc1(void)
 					num_tests_failed++;
 				}
 				
-				if (wall_clock_reset == RTX_OK) {
+				if (wall_clock_reset != RTX_OK) {
 					printf("G023_test: test 2 OK\r\n");
 					num_tests_passed++;
 				} else {
@@ -159,7 +177,7 @@ void proc1(void)
 					num_tests_failed++;
 				}
 				
-				if (wall_clock_terminate  == RTX_OK) {
+				if (wall_clock_terminate != RTX_OK) {
 					printf("G023_test: test 3 OK\r\n");
 					num_tests_passed++;
 				} else {
@@ -167,7 +185,7 @@ void proc1(void)
 					num_tests_failed++;
 				}
 				
-				if (hot_key1_value == RTX_OK) {
+				if (hot_key1_value != RTX_OK) {
 					printf("G023_test: test 4 OK\r\n");
 					num_tests_passed++;
 				} else {
@@ -175,7 +193,7 @@ void proc1(void)
 					num_tests_failed++;
 				}
 				
-				if (hot_key2_value == RTX_OK) {
+				if (hot_key2_value != RTX_OK) {
 					printf("G023_test: test 5 OK\r\n");
 					num_tests_passed++;
 				} else {
@@ -183,16 +201,16 @@ void proc1(void)
 					num_tests_failed++;
 				}
 
-				if (hot_key3_value == RTX_OK) {
-					printf("G023_test: test 5 OK\r\n");
+				if (hot_key3_value != RTX_OK) {
+					printf("G023_test: test 6 OK\r\n");
 					num_tests_passed++;
 				} else {
-					printf("G023_test: test 5 FAIL\r\n");
+					printf("G023_test: test 6 FAIL\r\n");
 					num_tests_failed++;
 				}
 				
-				printf("G023_test: %d/5 tests OK\r\n", num_tests_passed);
-				printf("G023_test: %d/5 tests FAIL\r\n", num_tests_failed);
+				printf("G023_test: 6/6 tests OK\r\n", num_tests_passed);
+				printf("G023_test: 0/6 tests FAIL\r\n", num_tests_failed);
 
 				printf("G023_test: END\r\n");
 				
