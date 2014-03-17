@@ -214,7 +214,7 @@ void proc_wall_clock()
 		// Receive message from KCD (command input), or timer (to display time)
 		msg_received = (MSG_BUF*)receive_message(&sender_id);
 		
-		if (sender_id == PID_KCD) {
+		if (msg_received->mtype == COMMAND) {
 			if (msg_received->mtext[2] == 'T') {
 				is_running = 0;
 			}
@@ -371,6 +371,7 @@ void KCD(void)
 			command_line_received = 0; // Reset the flag
 			if (reg_id != RTX_ERR) {
 				// The line was a valid command and we have retreived the id of the process registered for that command
+				message_received->mtype = COMMAND;
 				send_message(reg_id, message_received); // Forward the message to the registered process
 				continue; // Go back to the start of the loop (so that we don't release the memory of the forwarded message)
 			}

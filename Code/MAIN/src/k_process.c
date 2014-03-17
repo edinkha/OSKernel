@@ -399,7 +399,10 @@ void *k_receive_message(int* sender_id)
 
 	// Get the first envelope in the current process's message queue
 	envelope = (MSG_ENVELOPE*)dequeue(&gp_current_process->m_message_q);
-	*sender_id = envelope->sender_pid; // Set the sender's ID
+
+	if (sender_id != NULL) {
+		*sender_id = envelope->sender_pid;
+	}
 
 	// TODO: VERIFY THIS WORKS -- EDITED: now returns address to msgbuf rather than envelope itself
 	message = (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
@@ -424,8 +427,11 @@ void* ki_receive_message(int* sender_id)
 
 	// Get the first envelope in the current process's message queue
 	envelope = (MSG_ENVELOPE*)dequeue(&gp_current_process->m_message_q);
-	*sender_id = envelope->sender_pid; // Set the sender's ID
-
+	
+	if (sender_id != NULL) {
+		*sender_id = envelope->sender_pid;
+	}
+	
 	// Return pointer to the msgbuf in the envelope
 	return (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
 }

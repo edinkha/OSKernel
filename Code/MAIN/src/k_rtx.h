@@ -61,6 +61,7 @@
 #define KCD_REG 1
 #define CRT_DISPLAY 2
 #define USER_INPUT 3
+#define COMMAND 4
 
 /*----- Types -----*/
 typedef unsigned char U8;
