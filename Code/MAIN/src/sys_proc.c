@@ -108,10 +108,12 @@ void UART_IPROC(void)
 		
 		// send char to KCD, which will handle parsing and send each character to CRT for printing
 		message_to_send = (MSG_BUF*)ki_request_memory_block();
-		message_to_send->mtype = USER_INPUT;
-		message_to_send->mtext[0] = g_char_in;
-		message_to_send->mtext[1] = '\0';
-		k_send_message(PID_KCD, (void*)message_to_send);
+		if (message_to_send) {
+			message_to_send->mtype = USER_INPUT;
+			message_to_send->mtext[0] = g_char_in;
+			message_to_send->mtext[1] = '\0';
+			k_send_message(PID_KCD, (void*)message_to_send);
+		}
 	}
 	else if (IIR_IntId & IIR_THRE) {
 		g_switch_flag = 0;
