@@ -358,9 +358,17 @@ void KCD(void)
 			else {
 				message_to_send->mtext[1] = '\0';
 
-				// Add the character to the user input string
-				str_user_input[idx_user_input] = message_received->mtext[0];
-				str_user_input[++idx_user_input] = '\0';
+				if (message_received->mtext[0] == '\b') { // The user pressed BACKSPACE
+					if (idx_user_input > 0) {
+						// Subtract a character from the user input string
+						str_user_input[--idx_user_input] = '\0';
+					}
+				}
+				else {
+					// Add the character to the user input string
+					str_user_input[idx_user_input] = message_received->mtext[0];
+					str_user_input[++idx_user_input] = '\0';
+				}
 			}
 
 			send_message(PID_CRT, message_to_send); // Send message to CRT
