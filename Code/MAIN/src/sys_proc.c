@@ -65,8 +65,8 @@ void set_priority_command_proc(void)
 	
 	while(1) {
 		// Initialize pid and priority to error
-		pid = -1;
-		priority = -1;
+		pid = RTX_ERR;
+		priority = RTX_ERR;
 		
 		// Receive message from KCD
 		msg_received = (MSG_BUF*)receive_message(&sender_id);
@@ -92,13 +92,13 @@ void set_priority_command_proc(void)
 			}
 		}
 		
-		if (pid != -1 && priority != -1) {
+		if (pid != RTX_ERR && priority != RTX_ERR) {
 			set_process_priority(pid, priority);
 		}
 		else {
 			msg_to_send = (MSG_BUF*)request_memory_block();
 			msg_to_send->mtype = CRT_DISPLAY;
-			strcpy(msg_to_send->mtext, "ERROR: Something went wrong! Please ensure that the PID is between 1 and 13 and that the priority is between 0 and 3.\n\r");
+			strcpy(msg_to_send->mtext, "ERROR: Incorrect Input! Please ensure that the PID is between 1 and 13 and that the priority is between 0 and 3.\n\r");
 			send_message(PID_CRT, msg_to_send);
 		}
 		
