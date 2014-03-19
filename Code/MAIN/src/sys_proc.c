@@ -43,126 +43,66 @@ typedef struct cmd
 CMD registered_commands[10]; // Array of registered commands for KCD
 int num_reg_commands = 0;    // Number of currently registered commands
 
-#ifdef DEBUG_HK
 /**
- * @brief: Print all of the PCB process_ids in the priority queue, along with their priorities
+ * @brief The Set Priority Command Process.
+ * Allows user to set process priority using messages rather than the user API.
  */
-void print(PriorityQueue* pqueue)
+void set_priority_command_proc(void)
 {
-	int i;
-	QNode* cur_node;
-	assert(pqueue != NULL);
-	for (i = 0; i < NUM_PRIORITIES; i++) {
-		cur_node = pqueue->queues[i].first;
-		while (cur_node != NULL) {
-			printf("Process ID = %d\n\r", ((PCB*)cur_node)->m_pid);
-			printf("Process Priority = %d\n\r", ((PCB*)cur_node)->m_priority);
-			cur_node = cur_node->next;
-		}
-	}
-}
-#endif
-
-// UART initialized in uart_irq.c
-void UART_IPROC(void)
-{
-	MSG_BUF* received_message;
-	MSG_BUF* message_to_send;
-
-	// Save the previously running proccess and set the current process to this i-proc 
-	PCB* old_proc = gp_current_process;
-	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
-
-#ifdef DEBUG_0
-	uart1_put_string("Entering UART i-proc\n\r");
-#endif // DEBUG_0
+	int sender_id;
+	int pid;
+	int priority;
+	MSG_BUF* msg_received;
+	MSG_BUF* msg_to_send;
 	
-	/* Reading IIR automatically acknowledges the interrupt */
-	IIR_IntId = (pUart->IIR) >> 1 ; // skip pending bit in IIR 
-	
-	if (IIR_IntId & IIR_RDA) { // Receive Data Available
-		g_switch_flag = 1;
-		/* read UART. Read RBR will clear the interrupt */
-		g_char_in = pUart->RBR;
-		
-	#ifdef DEBUG_0
-		uart1_put_string("Reading a char = ");
-		uart1_put_char(g_char_in);
-		uart1_put_string("\r\n");
-	#endif // DEBUG_0
-		
-	#ifdef DEBUG_HK
-		if (g_char_in == '!') {
-			uart1_put_string("! hotkey entered - printing processes on ready queue\n\r");
-			print(ready_pq);
-		}
-		else if (g_char_in == '@') {
-			uart1_put_string("@ hotkey entered - printing processes on blocked on memory queue\n\r");
-			print(blocked_memory_pq);
-		}
-		else if (g_char_in == '#') {
-			uart1_put_string("# hotkey entered - printing processes on blocked on receive queue\n\r");
-			print(blocked_waiting_pq);
-		}
-	#endif // DEBUG_HK
-		
-		// send char to KCD, which will handle parsing and send each character to CRT for printing
-		message_to_send = (MSG_BUF*)ki_request_memory_block();
-		if (message_to_send) {
-			message_to_send->mtype = USER_INPUT;
-			message_to_send->mtext[0] = g_char_in;
-			message_to_send->mtext[1] = '\0';
-			k_send_message(PID_KCD, (void*)message_to_send);
-		}
-	}
-	else if (IIR_IntId & IIR_THRE) {
-		g_switch_flag = 0;
-		/* THRE Interrupt, transmit holding register becomes empty */
-		received_message = (MSG_BUF*)ki_receive_message((int*)0);
-		gp_buffer = received_message->mtext;
-		while (*gp_buffer != '\0' ) {
-			g_char_out = *gp_buffer;
-		#ifdef DEBUG_0
-			printf("Writing a char = %c \n\r", g_char_out);
-		#endif // DEBUG_0
-			pUart->THR = g_char_out;
-			gp_buffer++;
-		}
-	#ifdef DEBUG_0
-		uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
-	#endif // DEBUG_0
-		k_release_memory_block((void*)received_message);
-		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
-		//pUart->THR = '\0';
-		gp_buffer = g_buffer;		
-	}
-	else {  /* not implemented yet */
-	#ifdef DEBUG_0
-		uart1_put_string("Should not get here!\n\r");
-	#endif // DEBUG_0
-	}
-	
-	//Restore the current process
-	gp_current_process = old_proc;
-}
-
-/**
- * @brief: prints CRT_DISPLAY message to UART0 by sending message to UART i-proc and toggling interrupt bit
- */
-void CRT(void)
-{
-	MSG_BUF* received_message;
+	// Tell the KCD to register the "%C" command with the set priority command process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'C';
+	msg_to_send->mtext[2] = '\0';
+	send_message(PID_KCD, (void*)msg_to_send);
 	
 	while(1) {
-		// grab the message from the CRT proc message queue
-		received_message = (MSG_BUF*)receive_message((int*)0);
-		if (received_message->mtype == CRT_DISPLAY) {
-			send_message(PID_UART_IPROC, received_message);
-			// trigger the UART THRE interrupt bit so that UART i-proc runs
-			pUart->IER ^= IER_THRE;
-		} else {
-			release_memory_block((void*)received_message);
+		// Initialize pid and priority to error
+		pid = RTX_ERR;
+		priority = RTX_ERR;
+		
+		// Receive message from KCD
+		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		
+		if (msg_received->mtype == COMMAND) {
+			// We're looking for a string of the following form: %C {1,...,13} {0,...,3}
+			if (msg_received->mtext[2] == ' ') {
+				// CASE: PID between 1 and 9
+				if (msg_received->mtext[4] == ' ' 
+					&& msg_received->mtext[3] >= '1' && msg_received->mtext[3] <= '9'
+					&& msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3') {
+						pid = ctoi(msg_received->mtext[3]);
+						priority = ctoi(msg_received->mtext[5]);
+				}
+				// CASE: PID between 10 and 13
+				else if (msg_received->mtext[5] == ' ' 
+							&& msg_received->mtext[3] == '1' 
+							&& msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '3'
+							&& msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3') {
+					pid = 10 + ctoi(msg_received->mtext[4]);
+					priority = ctoi(msg_received->mtext[6]);
+				}
+			}
 		}
+		
+		if (pid != RTX_ERR && priority != RTX_ERR) {
+			set_process_priority(pid, priority);
+		}
+		else {
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = CRT_DISPLAY;
+			strcpy(msg_to_send->mtext, "ERROR: Incorrect Input! Please ensure that the PID is between 1 and 13 and that the priority is between 0 and 3.\n\r");
+			send_message(PID_CRT, msg_to_send);
+		}
+		
+		release_memory_block(msg_received);
 	}
 }
 
@@ -404,4 +344,127 @@ void KCD(void)
 
 		release_memory_block(message_received);
 	}
+}
+
+/**
+ * @brief: prints CRT_DISPLAY message to UART0 by sending message to UART i-proc and toggling interrupt bit
+ */
+void CRT(void)
+{
+	MSG_BUF* received_message;
+	
+	while(1) {
+		// grab the message from the CRT proc message queue
+		received_message = (MSG_BUF*)receive_message((int*)0);
+		if (received_message->mtype == CRT_DISPLAY) {
+			send_message(PID_UART_IPROC, received_message);
+			// trigger the UART THRE interrupt bit so that UART i-proc runs
+			pUart->IER ^= IER_THRE;
+		} else {
+			release_memory_block((void*)received_message);
+		}
+	}
+}
+
+#ifdef DEBUG_HK
+/**
+ * @brief: Print all of the PCB process_ids in the priority queue, along with their priorities
+ */
+void print(PriorityQueue* pqueue)
+{
+	int i;
+	QNode* cur_node;
+	assert(pqueue != NULL);
+	for (i = 0; i < NUM_PRIORITIES; i++) {
+		cur_node = pqueue->queues[i].first;
+		while (cur_node != NULL) {
+			printf("Process ID = %d\n\r", ((PCB*)cur_node)->m_pid);
+			printf("Process Priority = %d\n\r", ((PCB*)cur_node)->m_priority);
+			cur_node = cur_node->next;
+		}
+	}
+}
+#endif
+
+// UART initialized in uart_irq.c
+void UART_IPROC(void)
+{
+	MSG_BUF* received_message;
+	MSG_BUF* message_to_send;
+
+	// Save the previously running proccess and set the current process to this i-proc 
+	PCB* old_proc = gp_current_process;
+	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+
+#ifdef DEBUG_0
+	uart1_put_string("Entering UART i-proc\n\r");
+#endif // DEBUG_0
+	
+	/* Reading IIR automatically acknowledges the interrupt */
+	IIR_IntId = (pUart->IIR) >> 1 ; // skip pending bit in IIR 
+	
+	if (IIR_IntId & IIR_RDA) { // Receive Data Available
+		g_switch_flag = 1;
+		/* read UART. Read RBR will clear the interrupt */
+		g_char_in = pUart->RBR;
+		
+	#ifdef DEBUG_0
+		uart1_put_string("Reading a char = ");
+		uart1_put_char(g_char_in);
+		uart1_put_string("\r\n");
+	#endif // DEBUG_0
+		
+	#ifdef DEBUG_HK
+		if (g_char_in == '!') {
+			uart1_put_string("! hotkey entered - printing processes on ready queue\n\r");
+			print(ready_pq);
+		}
+		else if (g_char_in == '@') {
+			uart1_put_string("@ hotkey entered - printing processes on blocked on memory queue\n\r");
+			print(blocked_memory_pq);
+		}
+		else if (g_char_in == '#') {
+			uart1_put_string("# hotkey entered - printing processes on blocked on receive queue\n\r");
+			print(blocked_waiting_pq);
+		}
+	#endif // DEBUG_HK
+		
+		// send char to KCD, which will handle parsing and send each character to CRT for printing
+		message_to_send = (MSG_BUF*)ki_request_memory_block();
+		if (message_to_send) {
+			message_to_send->mtype = USER_INPUT;
+			message_to_send->mtext[0] = g_char_in;
+			message_to_send->mtext[1] = '\0';
+			k_send_message(PID_KCD, (void*)message_to_send);
+		}
+	}
+	else if (IIR_IntId & IIR_THRE) {
+		g_switch_flag = 0;
+		/* THRE Interrupt, transmit holding register becomes empty */
+		received_message = (MSG_BUF*)ki_receive_message((int*)0);
+		gp_buffer = received_message->mtext;
+		while (*gp_buffer != '\0' ) {
+			g_char_out = *gp_buffer;
+		#ifdef DEBUG_0
+			printf("Writing a char = %c \n\r", g_char_out);
+		#endif // DEBUG_0
+			pUart->THR = g_char_out;
+			gp_buffer++;
+		}
+	#ifdef DEBUG_0
+		uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
+	#endif // DEBUG_0
+		k_release_memory_block((void*)received_message);
+		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
+		//pUart->THR = '\0';
+		gp_buffer = g_buffer;		
+	}
+	else {  /* not implemented yet */
+	#ifdef DEBUG_0
+		uart1_put_string("Should not get here!\n\r");
+	#endif // DEBUG_0
+	}
+	
+	//Restore the current process
+	gp_current_process = old_proc;
 }

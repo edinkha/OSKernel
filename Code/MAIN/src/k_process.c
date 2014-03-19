@@ -53,23 +53,31 @@ void process_init()
 	/* fill out the initialization table */
 
 	set_test_procs();
-
-	// Wall Clock process initialization
+	
+	// Set Process Priority Command Process initialization
 	// Want to do this first so it gets run first so it can register itself with the KCD
-	g_proc_table[0].m_pid = PID_CLOCK;
+	g_proc_table[0].m_pid = PID_SET_PRIO;
 	g_proc_table[0].m_priority = HIGH;
 	g_proc_table[0].m_stack_size = USR_SZ_STACK;
-	g_proc_table[0].mpf_start_pc = &proc_wall_clock;
+	g_proc_table[0].mpf_start_pc = &set_priority_command_proc;
+	
+	// Wall Clock process initialization
+	// Want to do this first so it gets run first so it can register itself with the KCD
+	g_proc_table[1].m_pid = PID_CLOCK;
+	g_proc_table[1].m_priority = HIGH;
+	g_proc_table[1].m_stack_size = USR_SZ_STACK;
+	g_proc_table[1].mpf_start_pc = &proc_wall_clock;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
-		g_proc_table[i+1].m_pid = g_test_procs[i].m_pid;
-		g_proc_table[i+1].m_priority = g_test_procs[i].m_priority;
-		g_proc_table[i+1].m_stack_size = g_test_procs[i].m_stack_size;
-		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
+		g_proc_table[i+2].m_pid = g_test_procs[i].m_pid;
+		g_proc_table[i+2].m_priority = g_test_procs[i].m_priority;
+		g_proc_table[i+2].m_stack_size = g_test_procs[i].m_stack_size;
+		g_proc_table[i+2].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
 
 	// KCD process initialization
-	g_proc_table[++i].m_pid = PID_KCD;
+	i = 8;
+	g_proc_table[i].m_pid = PID_KCD;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
 	g_proc_table[i].mpf_start_pc = &KCD;
@@ -307,6 +315,27 @@ int k_set_process_priority(int pid, int priority)
 	}
 	
 	switch (pcb->m_state) {
+		// If the process is in the blocked on memory queue
+		case BLOCKED:
+			//Move the process to its new location in the priority queue based on its new priority
+			if (!remove_at_priority(blocked_memory_pq, (QNode*)pcb, pcb->m_priority)) {
+				__enable_irq();
+				return RTX_ERR;
+			}
+			push(blocked_memory_pq, (QNode*)pcb, priority);
+			pcb->m_priority = priority;
+			break;
+		// If the process is in the blocked on receive queue
+		case BLOCKED_ON_RECEIVE:
+			//Move the process to its new location in the priority queue based on its new priority
+			if (!remove_at_priority(blocked_waiting_pq, (QNode*)pcb, pcb->m_priority)) {
+				__enable_irq();
+				return RTX_ERR;
+			}
+			push(blocked_waiting_pq, (QNode*)pcb, priority);
+			pcb->m_priority = priority;
+			break;
+		// If the process is in the ready queue
 		case NEW:
 		case READY:
 			//Move the process to its new location in the priority queue based on its new priority
@@ -315,7 +344,6 @@ int k_set_process_priority(int pid, int priority)
 				return RTX_ERR;
 			}
 			push(ready_pq, (QNode*)pcb, priority);
-		default: //Add other states above if there are states where other work should be done
 			pcb->m_priority = priority;
 			k_release_processor();
 			__disable_irq();
