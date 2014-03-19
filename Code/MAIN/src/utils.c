@@ -14,3 +14,15 @@ char itoc(int i)
 {
 	return '0' + i;
 }
+
+int hasWhiteSpaceToEnd(char* s, int n)
+{
+	s += n;
+	while (*s != '\0') {
+		if (*s > ' ') {
+			return 0;
+		}
+		s++;
+	}
+	return 1;
+}

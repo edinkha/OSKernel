@@ -79,7 +79,7 @@ void set_priority_command_proc(void)
 				if (msg_received->mtext[4] == ' ' 
 					&& msg_received->mtext[3] >= '1' && msg_received->mtext[3] <= '9'
 					&& msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
-					&& msg_received->mtext[6] <= ' ') {
+					&& hasWhiteSpaceToEnd(msg_received->mtext, 6)) {
 						pid = ctoi(msg_received->mtext[3]);
 						priority = ctoi(msg_received->mtext[5]);
 				}
@@ -88,7 +88,7 @@ void set_priority_command_proc(void)
 							&& msg_received->mtext[3] == '1' 
 							&& msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '3'
 							&& msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3'
-							&& msg_received->mtext[7] <= ' ') {
+							&& hasWhiteSpaceToEnd(msg_received->mtext, 7)) {
 					pid = 10 + ctoi(msg_received->mtext[4]);
 					priority = ctoi(msg_received->mtext[6]);
 				}
@@ -186,7 +186,7 @@ void proc_wall_clock()
 					&& msg_received->mtext[9] == ':'
 					&& msg_received->mtext[10] >= '0' && msg_received->mtext[10] <= '5'
 					&& msg_received->mtext[11] >= '0' && msg_received->mtext[11] <= '9'
-					&& msg_received->mtext[12] <= ' ') {
+					&& hasWhiteSpaceToEnd(msg_received->mtext, 12)) {
 					// Use the input time to set the current time variables and set the message's type to the validator so the clock will run
 					hours = ctoi(msg_received->mtext[4]) * 10 + ctoi(msg_received->mtext[5]);
 					minutes = ctoi(msg_received->mtext[7]) * 10 + ctoi(msg_received->mtext[8]);

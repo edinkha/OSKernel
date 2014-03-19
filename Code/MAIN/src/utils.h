@@ -25,4 +25,13 @@ int ctoi(char c);
  */
 char itoc(int i);
 
+/**
+ * Determines if the rest of the string, starting from index n,
+ * is made up of only whitespace (or non-printing) characters.
+ * @param {char*} s - The string to check for non-whitespace characters.
+ * @param {int} n - The index of the string at which to start the search.
+ * @returns {int} 1 if there is only whitespace characters starting at index n to the end of the string; else 0.
+ */
+int hasWhiteSpaceToEnd(char* s, int n);
+
 #endif /* UTILS_H_ */
