@@ -16,6 +16,8 @@ extern PCB* gp_current_process;
 
 volatile uint32_t g_timer_count = 0; // increment every 1 ms
 
+ForwardList* delayed_messages; // List of delayed messages
+PCB* timer_proc;
 
 /**
  * @brief: initialize timer. Only timer 0 is supported
@@ -124,7 +126,7 @@ __asm void TIMER0_IRQHandler(void)
  */
 void c_TIMER0_IRQHandler(void)
 {
-	int cur_pid;
+	PCB* cur_proc;
 
 	/* acknowledge interrupt */
 	LPC_TIM0->IR = BIT(0);
@@ -133,22 +135,12 @@ void c_TIMER0_IRQHandler(void)
 
 	g_timer_count++; // Increment the time
 
-	/* Do a mock process switch by giving the current process variable some of the i-proc's data
-	 * (the only reason this has to be done is because the messaging functions use data from gp_curent_process)
-	 * NOTE: This looks hacky, and it is; but it is not worse than saving the gp_current_proc pointer, getting the
-	 * timer i-proc's pointer and setting that to gp_current_proc because that would take way more time and not
-	 * be any different than this (since the only current process data we care about is the current process's pid
-	 * and whether or not it is an i-process).
-	 */
-	cur_pid = gp_current_process->m_pid; // Save the current process's PID
-	gp_current_process->m_pid = PID_TIMER_IPROC;
-	gp_current_process->m_is_iproc = 1;
+	cur_proc = gp_current_process; // Save the actual current process
+	gp_current_process = timer_proc; // Set the timer as the current process
 
 	timer_i_process(); // Call the timer i-process
 
-	// Restore the current process's data
-	gp_current_process->m_pid = cur_pid;
-	gp_current_process->m_is_iproc = 0;
+	gp_current_process = cur_proc; // Restore the current process
 
 	__enable_irq(); // Re-enable interrupts
 }
@@ -158,13 +150,27 @@ void c_TIMER0_IRQHandler(void)
  */
 void timer_i_process()
 {
-	// If a second has passed, send a message to the wall clock
-	if (g_timer_count % 1000 == 0) {
-		MSG_BUF* message = (MSG_BUF*)ki_request_memory_block();
-		if (message) {
-			message->mtype = DEFAULT;
-			message->mtext[0] = '\0';
-			k_send_message(PID_CLOCK, message);
+	MSG_BUF* message;
+
+	// Insert the envelopes of any received messages into the list of delayed messages
+	while (message = (MSG_BUF*)ki_receive_message(0)) {
+		// Get the pointer to the envelope from the message
+		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)((U8*)message - SZ_MEM_BLOCK_HEADER);
+
+		/* Insert the envelope into the delayed messages list based on the send time.
+		 * The later the send time, the farther to the back of the list the message will be inserted.
+		 */
+		if (empty(delayed_messages) || ((MSG_ENVELOPE*)delayed_messages->front)->send_time > envelope->send_time) {
+			push_front(delayed_messages, (ListNode*)envelope);
+		}
+		else {
+			MSG_ENVELOPE* iter = (MSG_ENVELOPE*)delayed_messages->front;
+			while (iter->next && iter->next->send_time <= envelope->send_time) {
+				iter = iter->next;
+			}
+			// Perform the insertion
+			envelope->next = iter->next;
+			iter->next = envelope;
 		}
 	}
 

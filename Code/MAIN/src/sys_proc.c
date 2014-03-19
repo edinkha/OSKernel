@@ -180,7 +180,7 @@ void proc_wall_clock()
 	int hours;
 	int minutes;
 	int seconds;
-	int is_running = 0; // Initialize to 0 (meaning false)
+	int mtype_validator = -1; // Validates messages to determine if the wall clock should run
 	int sender_id;
 	MSG_BUF* msg_received;
 	MSG_BUF* msg_to_send;
@@ -213,19 +213,26 @@ void proc_wall_clock()
 	send_message(PID_KCD, (void*)msg_to_send);
 
 	while (1) {
-		// Receive message from KCD (command input), or timer (to display time)
+		// Receive message from KCD (command input), or self (to display time)
 		msg_received = (MSG_BUF*)receive_message(&sender_id);
 		
 		if (msg_received->mtype == COMMAND) {
-			if (msg_received->mtext[2] == 'T') {
-				is_running = 0;
+			/* Change the message type validator
+			 * This invalidates previous delay-sent messages so only new messages are used to run the clock
+			 */
+			mtype_validator = get_current_time();
+			
+			// If the message type validator happens to have been set to the COMMAND type, change it
+			if (mtype_validator == COMMAND) {
+				++mtype_validator;
 			}
-			else if (msg_received->mtext[2] == 'R') {
-				// Reset the time and set the wall clock to running
+
+			if (msg_received->mtext[2] == 'R') { // Reset and run clock
+				// Reset the time and set the message's type to the validator so the clock will run
 				hours = minutes = seconds = 0;
-				is_running = 1;
+				msg_received->mtype = mtype_validator;
 			}
-			else if (msg_received->mtext[2] == 'S'
+			else if (msg_received->mtext[2] == 'S' // Set clock running starting at a specified time
 			         && msg_received->mtext[3] == ' '
 			         && msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '2'
 			         && msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
@@ -235,15 +242,16 @@ void proc_wall_clock()
 			         && msg_received->mtext[9] == ':'
 			         && msg_received->mtext[10] >= '0' && msg_received->mtext[10] <= '5'
 			         && msg_received->mtext[11] >= '0' && msg_received->mtext[11] <= '9') {
-				// Use the input time to set the current time variables and set the wall clock to running
+				// Use the input time to set the current time variables and set the message's type to the validator so the clock will run
 				hours = ctoi(msg_received->mtext[4]) * 10 + ctoi(msg_received->mtext[5]);
 				minutes = ctoi(msg_received->mtext[7]) * 10 + ctoi(msg_received->mtext[8]);
 				seconds = ctoi(msg_received->mtext[10]) * 10 + ctoi(msg_received->mtext[11]);
-				is_running = 1;
+				msg_received->mtype = mtype_validator;
 			}
+			// else if (msg_received->mtext[2] == 'T'); // Stop clock (nothing to do for this)
 		}
 
-		if (is_running) {
+		if (msg_received->mtype == mtype_validator) {
 			// Send a message to the CRT to display the current time
 			msg_to_send = (MSG_BUF*)request_memory_block();
 			msg_to_send->mtype = CRT_DISPLAY;
@@ -272,6 +280,11 @@ void proc_wall_clock()
 					}
 				}
 			}
+
+			// Send a message to self in exactly 1 second to update and display the time
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = mtype_validator;
+			delayed_send(PID_CLOCK, msg_to_send, 1000);
 		}
 		
 		// Release the memory of the received message

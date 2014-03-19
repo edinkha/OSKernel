@@ -29,6 +29,9 @@ U32 g_switch_flag = 0;          /* whether to continue to run the process before
 PROC_INIT g_proc_table[NUM_PROCS];
 extern PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
+// So the timer has a reference to its pcb
+extern PCB* timer_proc;
+
 
 /* The null process */
 void nullproc(void)
@@ -120,11 +123,13 @@ void process_init()
 		PCB* process = gp_pcbs[i];
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
+
 	/* set i-proc states to READY */
-	for (i = NUM_PROCS - 1; i < NUM_PROCS; i++) {
+	for (i = NUM_PROCS - 3; i < NUM_PROCS - 1; i++) {
 		gp_pcbs[i]->m_state = READY;
 	}
 	
+	timer_proc = gp_pcbs[NUM_PROCS - 3]; // So the timer has a reference to its pcb
 }
 
 /**
@@ -337,7 +342,6 @@ int k_send_message(int process_id, void *message){
 		return RTX_ERR;
 	}
 	
-	// TODO: VERIFY THIS WORKS
 	// set sender and receiver proc_ids in the message_envelope memblock
 	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
 	envelope->sender_pid = gp_current_process->m_pid;
@@ -410,7 +414,8 @@ void *k_receive_message(int* sender_id)
 
 /**
  * The non-blocking version of k_receive_message for i-processes
- * @return
+ * @return A pointer to the msgbuf of the first message in the process's message queue,
+ *         or if the message queue is empty, returns a null pointer
  */
 void* ki_receive_message(int* sender_id)
 {
@@ -450,21 +455,8 @@ int k_delayed_send(int process_id, void* message, int delay)
 	envelope->destination_pid = process_id;
 	envelope->send_time = get_current_time() + delay;
 	
-	/* Insert the envelope into the delayed messages list based on the send time.
-	 * The later the send time, the farther to the back of the list the message will be inserted.
-	 */
-	if (empty(delayed_messages) || ((MSG_ENVELOPE*)delayed_messages->front)->send_time > envelope->send_time) {
-		push_front(delayed_messages, (ListNode*)envelope);
-	}
-	else {
-		MSG_ENVELOPE* iter = (MSG_ENVELOPE*)delayed_messages->front;
-		while (iter->next && iter->next->send_time <= envelope->send_time) {
-			iter = iter->next;
-		}
-		// Perform the insertion
-		envelope->next = iter->next;
-		iter->next = envelope;
-	}
+	// Add the envelope to the timer's message queue
+	enqueue(&get_proc_by_pid(PID_TIMER_IPROC)->m_message_q, (QNode*)envelope);
 	
 	__enable_irq(); // atomic(off)
 	

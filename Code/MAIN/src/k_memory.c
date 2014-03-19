@@ -19,7 +19,7 @@ ForwardList* heap; // Pointer to the heap
 PriorityQueue* ready_pq; // Ready queue to hold the PCBs
 PriorityQueue* blocked_memory_pq; // Blocked priority queue to hold PCBs blocked due to memory
 PriorityQueue* blocked_waiting_pq; // Blocked priority queue to hold PCBs blocked due to waiting for a message
-ForwardList* delayed_messages; // List of delayed messages
+extern ForwardList* delayed_messages; // List of delayed messages
 
 /**
  * @brief: Initialize RAM as follows:

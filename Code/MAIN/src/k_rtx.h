@@ -126,7 +126,6 @@ typedef struct mem_block
 extern PriorityQueue* blocked_memory_pq;
 extern PriorityQueue* blocked_waiting_pq;
 extern PriorityQueue* ready_pq;
-extern ForwardList* delayed_messages;
 
 /* ----- RTX User API ----- */
 #define __SVC_0  __svc_indirect(0)
