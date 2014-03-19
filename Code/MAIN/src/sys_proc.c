@@ -43,6 +43,7 @@ typedef struct cmd
 CMD registered_commands[10]; // Array of registered commands for KCD
 int num_reg_commands = 0;    // Number of currently registered commands
 
+
 /**
  * @brief The Set Priority Command Process.
  * Allows user to set process priority using messages rather than the user API.
@@ -77,7 +78,8 @@ void set_priority_command_proc(void)
 				// CASE: PID between 1 and 9
 				if (msg_received->mtext[4] == ' ' 
 					&& msg_received->mtext[3] >= '1' && msg_received->mtext[3] <= '9'
-					&& msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3') {
+					&& msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
+					&& msg_received->mtext[6] <= ' ') {
 						pid = ctoi(msg_received->mtext[3]);
 						priority = ctoi(msg_received->mtext[5]);
 				}
@@ -85,7 +87,8 @@ void set_priority_command_proc(void)
 				else if (msg_received->mtext[5] == ' ' 
 							&& msg_received->mtext[3] == '1' 
 							&& msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '3'
-							&& msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3') {
+							&& msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3'
+							&& msg_received->mtext[7] <= ' ') {
 					pid = 10 + ctoi(msg_received->mtext[4]);
 					priority = ctoi(msg_received->mtext[6]);
 				}
@@ -98,7 +101,7 @@ void set_priority_command_proc(void)
 		else {
 			msg_to_send = (MSG_BUF*)request_memory_block();
 			msg_to_send->mtype = CRT_DISPLAY;
-			strcpy(msg_to_send->mtext, "ERROR: Incorrect Input! Please ensure that the PID is between 1 and 13 and that the priority is between 0 and 3.\n\r");
+			strcpy(msg_to_send->mtext, "ERROR: Incorrect Input! Please ensure that the PID is between 1 and 13 and that the priority is between 0 and 3.\r\n");
 			send_message(PID_CRT, msg_to_send);
 		}
 		
@@ -157,38 +160,60 @@ void proc_wall_clock()
 		msg_received = (MSG_BUF*)receive_message(&sender_id);
 		
 		if (msg_received->mtype == COMMAND) {
-			/* Change the message type validator
-			 * This invalidates previous delay-sent messages so only new messages are used to run the clock
+			/* NOTE:
+			 * Changing the message type validator invalidates previous delay-sent messages
+			 * so only new messages are used to run the clock.
 			 */
-			mtype_validator = get_current_time();
-			
-			// If the message type validator happens to have been set to the COMMAND type, change it
-			if (mtype_validator == COMMAND) {
-				++mtype_validator;
-			}
 
 			if (msg_received->mtext[2] == 'R') { // Reset and run clock
-				// Reset the time and set the message's type to the validator so the clock will run
+				// Reset the time
 				hours = minutes = seconds = 0;
-				msg_received->mtype = mtype_validator;
+
+				mtype_validator = get_current_time(); // Change the message type validator
+				// If the message type validator happens to have been set to the COMMAND type, change it
+				if (mtype_validator == COMMAND) {
+					++mtype_validator;
+				}
+				msg_received->mtype = mtype_validator; // Set the message's type to the validator so the clock will run
 			}
-			else if (msg_received->mtext[2] == 'S' // Set clock running starting at a specified time
-			         && msg_received->mtext[3] == ' '
-			         && msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '2'
-			         && msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
-			         && msg_received->mtext[6] == ':'
-			         && msg_received->mtext[7] >= '0' && msg_received->mtext[7] <= '5'
-			         && msg_received->mtext[8] >= '0' && msg_received->mtext[8] <= '9'
-			         && msg_received->mtext[9] == ':'
-			         && msg_received->mtext[10] >= '0' && msg_received->mtext[10] <= '5'
-			         && msg_received->mtext[11] >= '0' && msg_received->mtext[11] <= '9') {
-				// Use the input time to set the current time variables and set the message's type to the validator so the clock will run
-				hours = ctoi(msg_received->mtext[4]) * 10 + ctoi(msg_received->mtext[5]);
-				minutes = ctoi(msg_received->mtext[7]) * 10 + ctoi(msg_received->mtext[8]);
-				seconds = ctoi(msg_received->mtext[10]) * 10 + ctoi(msg_received->mtext[11]);
-				msg_received->mtype = mtype_validator;
+			else if (msg_received->mtext[2] == 'S') { // Set clock running starting at a specified time
+				if (msg_received->mtext[3] == ' '
+					&& msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '2'
+					&& msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
+					&& msg_received->mtext[6] == ':'
+					&& msg_received->mtext[7] >= '0' && msg_received->mtext[7] <= '5'
+					&& msg_received->mtext[8] >= '0' && msg_received->mtext[8] <= '9'
+					&& msg_received->mtext[9] == ':'
+					&& msg_received->mtext[10] >= '0' && msg_received->mtext[10] <= '5'
+					&& msg_received->mtext[11] >= '0' && msg_received->mtext[11] <= '9'
+					&& msg_received->mtext[12] <= ' ') {
+					// Use the input time to set the current time variables and set the message's type to the validator so the clock will run
+					hours = ctoi(msg_received->mtext[4]) * 10 + ctoi(msg_received->mtext[5]);
+					minutes = ctoi(msg_received->mtext[7]) * 10 + ctoi(msg_received->mtext[8]);
+					seconds = ctoi(msg_received->mtext[10]) * 10 + ctoi(msg_received->mtext[11]);
+
+					mtype_validator = get_current_time(); // Change the message type validator
+					// If the message type validator happens to have been set to the COMMAND type, change it
+					if (mtype_validator == COMMAND) {
+						++mtype_validator;
+					}
+					msg_received->mtype = mtype_validator; // Set the message's type to the validator so the clock will run
+				}
+				else { // Input was invalid
+					// Send a message to the CRT to display an error message
+					msg_to_send = (MSG_BUF*)request_memory_block();
+					msg_to_send->mtype = CRT_DISPLAY;
+					strcpy(msg_to_send->mtext, "ERROR: The input time was invalid!\r\n");
+					send_message(PID_CRT, msg_to_send);
+				}
 			}
-			// else if (msg_received->mtext[2] == 'T'); // Stop clock (nothing to do for this)
+			else if (msg_received->mtext[2] == 'T') { // Stop clock
+				mtype_validator = get_current_time(); // Change the message type validator so the clock will stop running
+				// If the message type validator happens to have been set to the COMMAND type, change it
+				if (mtype_validator == COMMAND) {
+					++mtype_validator;
+				}
+			}
 		}
 
 		if (msg_received->mtype == mtype_validator) {
