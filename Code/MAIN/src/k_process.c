@@ -50,23 +50,31 @@ void process_init()
 	/* fill out the initialization table */
 
 	set_test_procs();
-
-	// Wall Clock process initialization
+	
+	// Set Process Priority Command Process initialization
 	// Want to do this first so it gets run first so it can register itself with the KCD
-	g_proc_table[0].m_pid = PID_CLOCK;
+	g_proc_table[0].m_pid = PID_SET_PRIO;
 	g_proc_table[0].m_priority = HIGH;
 	g_proc_table[0].m_stack_size = USR_SZ_STACK;
-	g_proc_table[0].mpf_start_pc = &proc_wall_clock;
+	g_proc_table[0].mpf_start_pc = &set_priority_command_proc;
+	
+	// Wall Clock process initialization
+	// Want to do this first so it gets run first so it can register itself with the KCD
+	g_proc_table[1].m_pid = PID_CLOCK;
+	g_proc_table[1].m_priority = HIGH;
+	g_proc_table[1].m_stack_size = USR_SZ_STACK;
+	g_proc_table[1].mpf_start_pc = &proc_wall_clock;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
-		g_proc_table[i+1].m_pid = g_test_procs[i].m_pid;
-		g_proc_table[i+1].m_priority = g_test_procs[i].m_priority;
-		g_proc_table[i+1].m_stack_size = g_test_procs[i].m_stack_size;
-		g_proc_table[i+1].mpf_start_pc = g_test_procs[i].mpf_start_pc;
+		g_proc_table[i+2].m_pid = g_test_procs[i].m_pid;
+		g_proc_table[i+2].m_priority = g_test_procs[i].m_priority;
+		g_proc_table[i+2].m_stack_size = g_test_procs[i].m_stack_size;
+		g_proc_table[i+2].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
 
 	// KCD process initialization
-	g_proc_table[++i].m_pid = PID_KCD;
+	i = 8;
+	g_proc_table[i].m_pid = PID_KCD;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
 	g_proc_table[i].mpf_start_pc = &KCD;
@@ -121,7 +129,7 @@ void process_init()
 		push(ready_pq, (QNode *)process, process->m_priority);
 	}
 	/* set i-proc states to READY */
-	for (i = NUM_PROCS - 1; i < NUM_PROCS; i++) {
+	for (i = NUM_PROCS - 3; i < NUM_PROCS - 1; i++) {
 		gp_pcbs[i]->m_state = READY;
 	}
 	
