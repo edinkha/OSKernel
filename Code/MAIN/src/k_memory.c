@@ -172,7 +172,6 @@ void *k_request_memory_block(void)
 	
 	__enable_irq(); // atomic(off)
 	
-	// TODO: VERIFY THIS WORKS
 	//Pop a memory block off the heap and return a pointer to its content
 	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
 }
@@ -186,7 +185,6 @@ void* ki_request_memory_block(void)
 	if (empty(heap)) {
 		return (void*)0;
 	}
-	// TODO: VERIFY THIS WORKS
 	// Pop a memory block off the heap and return a pointer to its content
 	return (void*)((U8*)pop_front(heap) + SZ_MEM_BLOCK_HEADER);
 }
@@ -204,7 +202,6 @@ int k_release_memory_block(void *p_mem_blk)
 		return RTX_ERR;
 	}
 
-	// TODO: VERIFY THIS WORKS
 	// Put the memory block back onto the heap
 	push_front(heap, (ListNode*)((U8*)p_mem_blk - SZ_MEM_BLOCK_HEADER));
 
