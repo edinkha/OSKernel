@@ -49,7 +49,61 @@ int num_reg_commands = 0;    // Number of currently registered commands
  */
 void set_priority_command_proc(void)
 {
+	int sender_id;
+	int pid;
+	int priority;
+	MSG_BUF* msg_received;
+	MSG_BUF* msg_to_send;
 	
+	// Tell the KCD to register the "%C" command with the set priority command process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'C';
+	msg_to_send->mtext[2] = '\0';
+	send_message(PID_KCD, (void*)msg_to_send);
+	
+	while(1) {
+		// Initialize pid and priority to error
+		pid = -1;
+		priority = -1;
+		
+		// Receive message from KCD
+		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		
+		if (msg_received->mtype == COMMAND) {
+			// We're looking for a string of the following form: %C {1,...,13} {0,...,3}
+			if (msg_received->mtext[2] == ' ') {
+				// CASE: PID between 1 and 9
+				if (msg_received->mtext[4] == ' ' 
+					&& msg_received->mtext[3] >= '1' && msg_received->mtext[3] <= '9'
+					&& msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3') {
+						pid = ctoi(msg_received->mtext[3]);
+						priority = ctoi(msg_received->mtext[5]);
+				}
+				// CASE: PID between 10 and 13
+				else if (msg_received->mtext[5] == ' ' 
+							&& msg_received->mtext[3] == '1' 
+							&& msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '3'
+							&& msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3') {
+					pid = 10 + ctoi(msg_received->mtext[4]);
+					priority = ctoi(msg_received->mtext[6]);
+				}
+			}
+		}
+		
+		if (pid != -1 && priority != -1) {
+			set_process_priority(pid, priority);
+		}
+		else {
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = CRT_DISPLAY;
+			strcpy(msg_to_send->mtext, "ERROR: Something went wrong! Please ensure that the PID is between 1 and 13 and that the priority is between 0 and 3.\n\r");
+			send_message(PID_CRT, msg_to_send);
+		}
+		
+		release_memory_block(msg_received);
+	}
 }
 
 /**
