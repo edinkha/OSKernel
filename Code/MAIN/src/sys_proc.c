@@ -30,8 +30,6 @@ extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
 extern void configure_old_pcb(PCB* p_pcb_old);
 extern int process_switch(PCB* p_pcb_old);
-LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
-U8 IIR_IntId;	    // Interrupt ID from IIR 		 
 
 // KCD command structure
 typedef struct cmd 
@@ -377,6 +375,7 @@ void KCD(void)
 void CRT(void)
 {
 	MSG_BUF* received_message;
+	LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;	 
 	
 	while(1) {
 		// grab the message from the CRT proc message queue
@@ -416,6 +415,8 @@ void UART_IPROC(void)
 {
 	MSG_BUF* received_message;
 	MSG_BUF* message_to_send;
+	LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
+	U8 IIR_IntId;	    // Interrupt ID from IIR 		 
 
 	// Save the previously running proccess and set the current process to this i-proc 
 	PCB* old_proc = gp_current_process;
@@ -470,18 +471,17 @@ void UART_IPROC(void)
 		gp_buffer = received_message->mtext;
 		while (*gp_buffer != '\0' ) {
 			g_char_out = *gp_buffer;
-		#ifdef DEBUG_0
-			printf("Writing a char = %c \n\r", g_char_out);
-		#endif // DEBUG_0
 			pUart->THR = g_char_out;
 			gp_buffer++;
 		}
+
+		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit
 	#ifdef DEBUG_0
+		printf("Writing a char = %c \n\r", g_char_out);
 		uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
-	#endif // DEBUG_0
-		k_release_memory_block((void*)received_message);
-		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit 
+	#endif // DEBUG_0		
 		//pUart->THR = '\0';
+		k_release_memory_block((void*)received_message);
 		gp_buffer = g_buffer;		
 	}
 	else {  /* not implemented yet */
