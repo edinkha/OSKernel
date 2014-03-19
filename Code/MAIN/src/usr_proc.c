@@ -1,29 +1,9 @@
 /**
  * @file:   usr_proc.c
- * @brief:  Six user processes: proc1...6 to do simple processor managment testing
- * @author: Evet DInkha
- * @date:   2014/03/15
+ * @brief:  Six user processes: proc1...6 to test our RTX
+ * @author: Justin Gagne
+ * @date:   2014/03/17
  * NOTE: Each process is in an infinite loop. Processes never terminate.
- *
- * Test cases:
- starting priorities:
-{proc1, ..., proc6} = {HIGH, MEDIUM, MEDIUM, LOWEST, LOWEST, LOW}
-
-proc1 is HIGH priority => immediately blocks on receive message
-proc2 is MEDIUM priority => sends !, @, # hotkeys
-	=> expect on Ready PQ: proc3, proc4, proc5, proc6, wallclock
-	=> expect on Blocked on Mem PQ: none
-	=> expect on Blocked on Receive PQ: UART iProc, Timer iProc, proc1
-	=> set proc4 priority to HIGH
-proc4 is now HIGH priority => sets wall clock to 234:123:12 (i.e. incorrect time)
-	=> expect error message
-	=> sends incorrect KCD_REG to KCD
-	=> expect error message
-	=> sets wall clock to 23:59:55
-	=> expect wall clock to be set correctly
-	=> 
-  => sets priority to LOWEST
-proc3 is MEDIUM priority => sends delayed message to proc5
  */
 
 #include "rtx.h"
@@ -39,33 +19,19 @@ proc3 is MEDIUM priority => sends delayed message to proc5
 /* initialization table item */
 PROC_INIT g_test_procs[NUM_TEST_PROCS];
 
-
-
 void set_test_procs() {
 	int i;
 	for( i = 0; i < NUM_TEST_PROCS; i++ ) {
 		g_test_procs[i].m_pid=(U32)(i+1);
-		g_test_procs[i].m_stack_size=0x100;
-	}
-  
+		g_test_procs[i].m_priority = LOWEST;
+		g_test_procs[i].m_stack_size = 0x100;
+	}  
 	g_test_procs[0].mpf_start_pc = &proc1;
-	g_test_procs[0].m_priority   = LOW;
-
 	g_test_procs[1].mpf_start_pc = &proc2;
-	g_test_procs[1].m_priority   = MEDIUM;
-
 	g_test_procs[2].mpf_start_pc = &proc3;
-	g_test_procs[2].m_priority   = LOW;
-
 	g_test_procs[3].mpf_start_pc = &proc4;
-	g_test_procs[3].m_priority   = LOW;
-
 	g_test_procs[4].mpf_start_pc = &proc5;
-	g_test_procs[4].m_priority   = LOW;
-
 	g_test_procs[5].mpf_start_pc = &proc6;
-	g_test_procs[5].m_priority   = LOW;
-
 }
 int results_printed = 0,
 	  block1_sent_message = RTX_ERR,
