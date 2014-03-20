@@ -34,4 +34,11 @@ char itoc(int i);
  */
 int hasWhiteSpaceToEnd(char* s, int n);
 
+/**
+ * Determines the length of an integer
+ * @param {int} n - The integer being passed in.
+ * @returns {int} length of the integer n.
+ */
+int intLength(int n);
+
 #endif /* UTILS_H_ */
