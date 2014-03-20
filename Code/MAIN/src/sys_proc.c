@@ -514,14 +514,14 @@ void proca(void) {
 	send_message(PID_KCD, (void*)msg_to_send);
 	
 	while (1) {
-		msg_received = (MSG_BUF*)ki_receive_message(&sender_id);
+		msg_received = (MSG_BUF*)receive_message(&sender_id);
 		
 		if (msg_received->mtype == COMMAND) {
 			if (msg_received->mtext[1] == 'Z') { 
-				k_release_memory_block((void*)msg_received);
+				release_memory_block((void*)msg_received);
 				break;
 			} else {
-				k_release_memory_block((void*)msg_received);
+				release_memory_block((void*)msg_received);
 			}
 		
 		}
@@ -533,9 +533,9 @@ void proca(void) {
 		for (i = intLength(num)-1; i >= 0; i--) {	//==
 			msg_to_send->mtext[intLength(num)-1-i] = itoc(num/pow(10,i));
 		}
-		k_send_message(PID_B, (void*)msg_to_send);
+		send_message(PID_B, (void*)msg_to_send);
 		num = num + 1;
-		k_release_processor();
+		release_processor();
 	}
 }
 
@@ -545,7 +545,7 @@ void procb (void) {
 	MSG_BUF* msg_received;
 	
 	while (1) {
-		msg_received = (MSG_BUF*)k_receive_message(&sender_id);
+		msg_received = (MSG_BUF*)receive_message(&sender_id);
 		if(msg_received) {
 			send_message(PID_C, (void*)msg_received);	//==
 		}
@@ -572,7 +572,7 @@ void procc (void) {
 	
 	while (1) {
 		if (q_empty(&local_message_q)) {
-			envelope = (MSG_ENVELOPE*)ki_receive_message(&sender_id);
+			envelope = (MSG_ENVELOPE*)receive_message(&sender_id);
 		} else { 
 			envelope = (MSG_ENVELOPE*)dequeue(&local_message_q);
 		}
@@ -589,7 +589,7 @@ void procc (void) {
 				msg_to_send->mtype = WAKEUP10;
 				delayed_send(PID_C, msg_to_send, 10000);
 				while (1) {
-					envelope = (MSG_ENVELOPE*)ki_receive_message(&sender_id);
+					envelope = (MSG_ENVELOPE*)receive_message(&sender_id);
 					if (envelope->mtype == WAKEUP10) {
 						break;
 					} else {

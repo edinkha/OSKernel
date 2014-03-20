@@ -76,7 +76,7 @@ void process_init()
 	}
 	
 	// KCD process initialization
-	i=8;
+	i = 8;
 	g_proc_table[i].m_pid = PID_KCD;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
