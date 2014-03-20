@@ -61,19 +61,19 @@ void process_init()
 	g_proc_table[0].m_stack_size = USR_SZ_STACK;
 	g_proc_table[0].mpf_start_pc = &set_priority_command_proc;
 	
-	// Stress test A initialization
-	// Want to do this first so it gets run first so it can register itself with the KCD
-	g_proc_table[1].m_pid = PID_A;
-	g_proc_table[1].m_priority = HIGH;
-	g_proc_table[1].m_stack_size = USR_SZ_STACK;
-	g_proc_table[1].mpf_start_pc = &proca;
-	
 	// Wall Clock process initialization
 	// Want to do this first so it gets run first so it can register itself with the KCD
-	g_proc_table[2].m_pid = PID_CLOCK;
+	g_proc_table[1].m_pid = PID_CLOCK;
+	g_proc_table[1].m_priority = HIGH;
+	g_proc_table[1].m_stack_size = USR_SZ_STACK;
+	g_proc_table[1].mpf_start_pc = &proc_wall_clock;
+	
+	// Stress test A initialization
+	// Want to do this first so it gets run first so it can register itself with the KCD
+	g_proc_table[2].m_pid = PID_A;
 	g_proc_table[2].m_priority = HIGH;
 	g_proc_table[2].m_stack_size = USR_SZ_STACK;
-	g_proc_table[2].mpf_start_pc = &proc_wall_clock;
+	g_proc_table[2].mpf_start_pc = &proca;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
 		g_proc_table[i+3].m_pid = g_test_procs[i].m_pid;
