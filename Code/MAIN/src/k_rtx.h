@@ -18,14 +18,15 @@
 #define RTX_OK  0
 #define NULL 0
 #define NUM_TEST_PROCS 6
-#define NUM_PROCS 13
+#define NUM_STRESS_PROCS 3
+#define NUM_PROCS 16
 
 #define USR_SZ_MEM_BLOCK 0x80    /* heap memory block size is 128 B */
 #define SZ_MEM_BLOCK_HEADER 0x10 /* memory block header size is 16 B */
 
 #ifdef DEBUG_0
 #define USR_SZ_STACK 0x200		/* user proc stack size 512 B */
-#define NUM_HEAP_BLOCKS 9		/* Blocks just for debugging */
+#define NUM_HEAP_BLOCKS 12		/* Blocks just for debugging */
 #else
 #define USR_SZ_STACK 0x100		/* user proc stack size 218 B */
 #endif /* DEBUG_0 */
@@ -60,6 +61,8 @@
 #define CRT_DISPLAY 2
 #define USER_INPUT 3
 #define COMMAND 4
+#define COUNT_REPORT 5
+#define WAKEUP10 6
 
 /*----- Types -----*/
 typedef unsigned char U8;

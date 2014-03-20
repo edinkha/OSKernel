@@ -74,9 +74,9 @@ void process_init()
 		g_proc_table[i+2].m_stack_size = g_test_procs[i].m_stack_size;
 		g_proc_table[i+2].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
-
+	
 	// KCD process initialization
-	i = 8;
+	i=8;
 	g_proc_table[i].m_pid = PID_KCD;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
@@ -87,6 +87,26 @@ void process_init()
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
 	g_proc_table[i].mpf_start_pc = &CRT;
+	
+	
+	// Stress test A initialization
+	i = 10;
+	g_proc_table[i].m_pid = PID_A;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &proca;
+	
+	// Stress test B initialization
+	g_proc_table[++i].m_pid = PID_B;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &procb;
+	
+	// Stress test C initialization
+	g_proc_table[++i].m_pid = PID_C;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &procc;
 	
 	// TIMER i-process initialization
 	g_proc_table[++i].m_pid = PID_TIMER_IPROC;

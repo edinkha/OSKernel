@@ -5,6 +5,7 @@
  */
 
 #include <LPC17xx.h>
+#include "math.h"
 #include "timer.h"
 #include "sys_proc.h"
 #include "uart.h"
@@ -255,6 +256,7 @@ void proc_wall_clock()
 	}
 }
 
+
 /**
  * Gets the PID of the process that registered the input command
  * @returns The PID of the process that registered the input command,
@@ -493,3 +495,111 @@ void UART_IPROC(void)
 	//Restore the current process
 	gp_current_process = old_proc;
 }
+
+void proca(void) {
+	int sender_id;
+	int num = 0;
+	int i;
+	
+	MSG_BUF* msg_received;
+	MSG_BUF* msg_to_send;
+	
+
+	// Tell the KCD to register the "%Z" command
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'Z';
+	msg_to_send->mtext[2] = '\0';
+	send_message(PID_KCD, (void*)msg_to_send);
+	
+	while (1) {
+		msg_received = (MSG_BUF*)ki_receive_message(&sender_id);
+		
+		if (msg_received->mtype == COMMAND) {
+			if (msg_received->mtext[1] == 'Z') { 
+				k_release_memory_block((void*)msg_received);
+				break;
+			} else {
+				k_release_memory_block((void*)msg_received);
+			}
+		
+		}
+	}
+	num = 0;
+	while (1) {
+		msg_to_send = (MSG_BUF*)request_memory_block();
+		msg_to_send->mtype = COUNT_REPORT;
+		for (i = intLength(num)-1; i >= 0; i--) {	//==
+			msg_to_send->mtext[intLength(num)-1-i] = itoc(num/pow(10,i));
+		}
+		k_send_message(PID_B, (void*)msg_to_send);
+		num = num + 1;
+		k_release_processor();
+	}
+}
+
+void procb (void) {
+	int sender_id;
+	
+	MSG_BUF* msg_received;
+	
+	while (1) {
+		msg_received = (MSG_BUF*)k_receive_message(&sender_id);
+		if(msg_received) {
+			send_message(PID_C, (void*)msg_received);	//==
+		}
+	}
+}
+
+int getLength (char* w) {
+	int result = 0;
+	
+	while (w[result]) {
+		result++;
+	}
+	return result+1;
+}
+
+void procc (void) {
+	int sender_id;
+	int pos = 0;
+	MSG_BUF* msg_to_send;
+	MSG_ENVELOPE* envelope;
+	Queue local_message_q;
+	
+	init_q(&local_message_q);
+	
+	while (1) {
+		if (q_empty(&local_message_q)) {
+			envelope = (MSG_ENVELOPE*)ki_receive_message(&sender_id);
+		} else { 
+			envelope = (MSG_ENVELOPE*)dequeue(&local_message_q);
+		}
+		
+		if (envelope->mtype == COUNT_REPORT) {
+			pos = getLength(envelope->mtext) - 2;
+			if (ctoi(envelope->mtext[pos])%2==0 && ctoi(envelope->mtext[pos+1])==0){
+				envelope->mtype = CRT_DISPLAY;
+				strcpy(envelope->mtext, "Process C\r\n");
+				send_message(PID_CRT, (MSG_BUF*)envelope);
+				
+				//hibernate
+				msg_to_send = (MSG_BUF*)request_memory_block();
+				msg_to_send->mtype = WAKEUP10;
+				delayed_send(PID_C, msg_to_send, 10000);
+				while (1) {
+					envelope = (MSG_ENVELOPE*)ki_receive_message(&sender_id);
+					if (envelope->mtype == WAKEUP10) {
+						break;
+					} else {
+						enqueue(&local_message_q, (QNode*)envelope);
+					}
+				}
+			}
+		}
+		//deallocate envelope?
+		release_processor();
+	}
+}
+

@@ -10,6 +10,7 @@
 #define RTX_OK 0
 #define NULL 0
 #define NUM_TEST_PROCS 6
+#define NUM_STRESS_PROCS 3
 
 #ifdef DEBUG_0
 #define USR_SZ_STACK 0x200  /* user proc stack size 512B */
@@ -46,6 +47,9 @@
 #define KCD_REG 1
 #define CRT_DISPLAY 2
 #define USER_INPUT 3
+#define COMMAND 4
+#define COUNT_REPORT 5
+#define WAKEUP10 6
 
 /* ----- Types ----- */
 typedef unsigned char U8;
