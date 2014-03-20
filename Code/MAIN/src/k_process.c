@@ -61,22 +61,29 @@ void process_init()
 	g_proc_table[0].m_stack_size = USR_SZ_STACK;
 	g_proc_table[0].mpf_start_pc = &set_priority_command_proc;
 	
-	// Wall Clock process initialization
+	// Stress test A initialization
 	// Want to do this first so it gets run first so it can register itself with the KCD
-	g_proc_table[1].m_pid = PID_CLOCK;
+	g_proc_table[1].m_pid = PID_A;
 	g_proc_table[1].m_priority = HIGH;
 	g_proc_table[1].m_stack_size = USR_SZ_STACK;
-	g_proc_table[1].mpf_start_pc = &proc_wall_clock;
+	g_proc_table[1].mpf_start_pc = &proca;
+	
+	// Wall Clock process initialization
+	// Want to do this first so it gets run first so it can register itself with the KCD
+	g_proc_table[2].m_pid = PID_CLOCK;
+	g_proc_table[2].m_priority = HIGH;
+	g_proc_table[2].m_stack_size = USR_SZ_STACK;
+	g_proc_table[2].mpf_start_pc = &proc_wall_clock;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
-		g_proc_table[i+2].m_pid = g_test_procs[i].m_pid;
-		g_proc_table[i+2].m_priority = g_test_procs[i].m_priority;
-		g_proc_table[i+2].m_stack_size = g_test_procs[i].m_stack_size;
-		g_proc_table[i+2].mpf_start_pc = g_test_procs[i].mpf_start_pc;
+		g_proc_table[i+3].m_pid = g_test_procs[i].m_pid;
+		g_proc_table[i+3].m_priority = g_test_procs[i].m_priority;
+		g_proc_table[i+3].m_stack_size = g_test_procs[i].m_stack_size;
+		g_proc_table[i+3].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
 	
 	// KCD process initialization
-	i = 8;
+	i = 9;
 	g_proc_table[i].m_pid = PID_KCD;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
@@ -87,13 +94,6 @@ void process_init()
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
 	g_proc_table[i].mpf_start_pc = &CRT;
-	
-	
-	// Stress test A initialization
-	g_proc_table[++i].m_pid = PID_A;
-	g_proc_table[i].m_priority = HIGH;
-	g_proc_table[i].m_stack_size = USR_SZ_STACK;
-	g_proc_table[i].mpf_start_pc = &proca;
 	
 	// Stress test B initialization
 	g_proc_table[++i].m_pid = PID_B;
