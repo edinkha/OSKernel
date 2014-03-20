@@ -90,8 +90,7 @@ void process_init()
 	
 	
 	// Stress test A initialization
-	i = 10;
-	g_proc_table[i].m_pid = PID_A;
+	g_proc_table[++i].m_pid = PID_A;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
 	g_proc_table[i].mpf_start_pc = &proca;
