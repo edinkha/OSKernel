@@ -5,6 +5,8 @@
  * @date:   2014/03/13
  */
 
+ #include <stdlib.h>
+
 int ctoi(char c)
 {
 	return c - '0';
@@ -40,3 +42,35 @@ int intLength(int n) {
     return 1;
 }
 
+char* itoa (int n, char* str)
+{
+	if (n == 0) {
+		str[0] = '0';
+		str[1] = '\0';
+	}
+	else {
+		int n_copy = n;
+		int i = 0;
+		
+		// Handle the case where n is negative
+		if (n < 0) {
+			str[0] = '-';
+			i = 1;
+		}
+		
+		// Add the number of digits in n to i
+		while (n_copy) {
+			++i;
+			n_copy /= 10;
+		}
+		
+		// Build the string
+		str[i] = '\0';
+		while (n) {
+			str[--i] = itoc(abs(n % 10));
+			n /= 10;
+		}
+	}
+	
+	return str;
+}
