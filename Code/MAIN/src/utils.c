@@ -5,6 +5,8 @@
  * @date:   2014/03/13
  */
 
+ #include <limits.h>
+ #include <math.h>
  #include <stdlib.h>
 
 int ctoi(char c)
@@ -49,7 +51,6 @@ char* itoa (int n, char* str)
 		str[1] = '\0';
 	}
 	else {
-		int n_copy = n;
 		int i = 0;
 		
 		// Handle the case where n is negative
@@ -58,11 +59,8 @@ char* itoa (int n, char* str)
 			i = 1;
 		}
 		
-		// Add the number of digits in n to i
-		while (n_copy) {
-			++i;
-			n_copy /= 10;
-		}
+		// Add the number of digits in n to i (handle special case when n == INT_MIN)
+		i += log10(n == INT_MIN ? INT_MAX : abs(n)) + 1;
 		
 		// Build the string
 		str[i] = '\0';
