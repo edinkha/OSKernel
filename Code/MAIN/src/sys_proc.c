@@ -530,9 +530,7 @@ void proca(void) {
 	while (1) {
 		msg_to_send = (MSG_BUF*)request_memory_block();
 		msg_to_send->mtype = COUNT_REPORT;
-		for (i = intLength(num)-1; i >= 0; i--) {	//==
-			msg_to_send->mtext[intLength(num)-1-i] = itoc(num/pow(10,i));
-		}
+		itoa(num, msg_to_send->mtext);
 		send_message(PID_B, (void*)msg_to_send);
 		num = num + 1;
 		release_processor();
@@ -563,42 +561,42 @@ int getLength (char* w) {
 
 void procc (void) {
 	int sender_id;
-	int pos = 0;
 	MSG_BUF* msg_to_send;
-	MSG_ENVELOPE* envelope;
+	MSG_BUF* msg_received;
 	Queue local_message_q;
 	
 	init_q(&local_message_q);
 	
 	while (1) {
 		if (q_empty(&local_message_q)) {
-			envelope = (MSG_ENVELOPE*)receive_message(&sender_id);
+			msg_received = (MSG_BUF*)receive_message(&sender_id);
 		} else { 
-			envelope = (MSG_ENVELOPE*)dequeue(&local_message_q);
+			msg_received = (MSG_BUF*)envelope_to_message((MSG_ENVELOPE*)dequeue(&local_message_q));
 		}
 		
-		if (envelope->mtype == COUNT_REPORT) {
-			pos = getLength(envelope->mtext) - 2;
-			if (ctoi(envelope->mtext[pos])%2==0 && ctoi(envelope->mtext[pos+1])==0){
-				envelope->mtype = CRT_DISPLAY;
-				strcpy(envelope->mtext, "Process C\r\n");
-				send_message(PID_CRT, (MSG_BUF*)envelope);
+		if (msg_received->mtype == COUNT_REPORT) {
+			int length = strlen(msg_received->mtext);
+			int pos = length - 2;
+			if (length > 1 && msg_received->mtext[pos]%2 == 0 && msg_received->mtext[pos+1] == '0'){
+				msg_received->mtype = CRT_DISPLAY;
+				strcpy(msg_received->mtext, "Process C\r\n");
+				send_message(PID_CRT, (MSG_BUF*)msg_received);
 				
 				//hibernate
 				msg_to_send = (MSG_BUF*)request_memory_block();
 				msg_to_send->mtype = WAKEUP10;
 				delayed_send(PID_C, msg_to_send, 10000);
 				while (1) {
-					envelope = (MSG_ENVELOPE*)receive_message(&sender_id);
-					if (envelope->mtype == WAKEUP10) {
+					msg_received = (MSG_BUF*)receive_message(&sender_id);
+					if (msg_received->mtype == WAKEUP10) {
 						break;
 					} else {
-						enqueue(&local_message_q, (QNode*)envelope);
+						enqueue(&local_message_q, (QNode*)message_to_envelope(msg_received));
 					}
 				}
 			}
 		}
-		//deallocate envelope?
+		release_memory_block(msg_received);
 		release_processor();
 	}
 }

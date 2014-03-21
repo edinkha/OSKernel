@@ -373,6 +373,17 @@ int k_set_process_priority(int pid, int priority)
 	return RTX_OK;
 }
 
+void* k_message_to_envelope(MSG_BUF* message)
+{
+	return (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
+}
+
+void* k_envelope_to_message(MSG_ENVELOPE* envelope)
+{
+	return (MSG_BUF *)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
+}
+
+
 /**
  * @brief: Sends message_envelope to process_id (i.e. add the message defined at message_envelope to process_id's message queue
  * @return: RTX_OK upon success
@@ -453,7 +464,7 @@ void *k_receive_message(int* sender_id)
 	}
 
 	message = (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
-	
+		
 	__enable_irq(); // atomic(off)
 	
 	return message;
