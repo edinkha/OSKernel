@@ -12,6 +12,7 @@
 
 #define BIT(X) (1<<X)
 
+extern U32 g_switch_flag;
 extern PCB* gp_current_process;
 
 volatile uint32_t g_timer_count = 0; // increment every 1 ms
@@ -114,35 +115,41 @@ uint32_t get_current_time(void)
  */
 __asm void TIMER0_IRQHandler(void)
 {
+	CPSID I ; disable interrupts
 	PRESERVE8
 	IMPORT c_TIMER0_IRQHandler
-	PUSH{r4-r11, lr}
-	BL c_TIMER0_IRQHandler
+ 	IMPORT k_release_processor
+ 	PUSH{r4-r11, lr}
+ 	BL c_TIMER0_IRQHandler
+ 	LDR R4, =__cpp(&g_switch_flag)
+ 	LDR R4, [R4]
+ 	MOV R5, #0     
+ 	CMP R4, R5
+ 	BEQ  RESTORE			; if g_switch_flag == 0, then restore the process that was interrupted
+ 	BL k_release_processor	; otherwise (i.e g_switch_flag == 1, so switch to the another process)
+RESTORE
+	CPSIE I ; enable interrupts
 	POP{r4-r11, pc}
 }
 
 /**
- * @brief: C TIMER0 IRQ Handler
+ * @brief C TIMER0 IRQ Handler
  */
 void c_TIMER0_IRQHandler(void)
 {
 	PCB* cur_proc;
 
-	/* acknowledge interrupt */
-	LPC_TIM0->IR = BIT(0);
-
-	__disable_irq(); // Prevent any other interrupts while we handle this one
+	LPC_TIM0->IR = BIT(0); // acknowledge interrupt
+	g_switch_flag = 0;     // Reset the switch flag 
 
 	g_timer_count++; // Increment the time
 
-	cur_proc = gp_current_process; // Save the actual current process
+	cur_proc = gp_current_process;   // Save the actual current process
 	gp_current_process = timer_proc; // Set the timer as the current process
 
 	timer_i_process(); // Call the timer i-process
 
-	gp_current_process = cur_proc; // Restore the current process
-
-	__enable_irq(); // Re-enable interrupts
+	gp_current_process = cur_proc;   // Restore the current process
 }
 
 /**

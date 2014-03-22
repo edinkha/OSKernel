@@ -416,11 +416,13 @@ void UART_IPROC(void)
 	MSG_BUF* received_message;
 	MSG_BUF* message_to_send;
 	LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
-	U8 IIR_IntId;	    // Interrupt ID from IIR 		 
+	U8 IIR_IntId;	    // Interrupt ID from IIR
 
 	// Save the previously running proccess and set the current process to this i-proc 
 	PCB* old_proc = gp_current_process;
 	gp_current_process = get_proc_by_pid(PID_UART_IPROC);
+	
+	g_switch_flag = 0;  // Reset the switch flag 
 
 #ifdef DEBUG_0
 	uart1_put_string("Entering UART i-proc\n\r");
@@ -430,7 +432,6 @@ void UART_IPROC(void)
 	IIR_IntId = (pUart->IIR) >> 1 ; // skip pending bit in IIR 
 	
 	if (IIR_IntId & IIR_RDA) { // Receive Data Available
-		g_switch_flag = 1;
 		/* read UART. Read RBR will clear the interrupt */
 		g_char_in = pUart->RBR;
 		
@@ -465,7 +466,6 @@ void UART_IPROC(void)
 		}
 	}
 	else if (IIR_IntId & IIR_THRE) {
-		g_switch_flag = 0;
 		/* THRE Interrupt, transmit holding register becomes empty */
 		received_message = (MSG_BUF*)ki_receive_message((int*)0);
 		gp_buffer = received_message->mtext;
