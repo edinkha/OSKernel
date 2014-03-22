@@ -9,11 +9,11 @@
 #define USR_PROC_H_
 
 void set_test_procs(void);
-void proc1(void);
-void proc2(void);
-void proc3(void);
-void proc4(void);
-void proc5(void);
-void proc6(void);
+void user_test_runner(void);
+void priority_tests(void);
+void memory_tests(void);
+void wall_clock_tests(void);
+void general_messaging_tests(void);
+void delayed_messaging_tests(void);
 
 #endif /* USR_PROC_H_ */
