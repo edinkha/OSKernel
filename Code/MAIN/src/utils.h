@@ -36,13 +36,6 @@ char itoc(int i);
 int hasWhiteSpaceToEnd(char* s, int n);
 
 /**
- * Determines the length of an integer
- * @param {int} n - The integer being passed in.
- * @returns {int} length of the integer n.
- */
-int intLength(int n);
-
-/**
  * Converts an integer to a null-terminated string and stores the result in the array given by the str parameter.
  * NOTE: Assumes the integer is base 10.
  *

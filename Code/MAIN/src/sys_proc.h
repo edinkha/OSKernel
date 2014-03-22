@@ -8,9 +8,9 @@
 
 
 extern void UART0_IRQHandler(void);
-extern void proca(void);
-extern void procb(void);
-extern void procc(void);
+extern void proc_a(void);
+extern void proc_b(void);
+extern void proc_c(void);
 extern void CRT(void);
 extern void KCD(void);
 extern void proc_wall_clock(void);

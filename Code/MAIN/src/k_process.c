@@ -73,7 +73,7 @@ void process_init()
 	g_proc_table[2].m_pid = PID_A;
 	g_proc_table[2].m_priority = HIGH;
 	g_proc_table[2].m_stack_size = USR_SZ_STACK;
-	g_proc_table[2].mpf_start_pc = &proca;
+	g_proc_table[2].mpf_start_pc = &proc_a;
 	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
 		g_proc_table[i+3].m_pid = g_test_procs[i].m_pid;
@@ -99,13 +99,13 @@ void process_init()
 	g_proc_table[++i].m_pid = PID_B;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
-	g_proc_table[i].mpf_start_pc = &procb;
+	g_proc_table[i].mpf_start_pc = &proc_b;
 	
 	// Stress test C initialization
 	g_proc_table[++i].m_pid = PID_C;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
-	g_proc_table[i].mpf_start_pc = &procc;
+	g_proc_table[i].mpf_start_pc = &proc_c;
 	
 	// TIMER i-process initialization
 	g_proc_table[++i].m_pid = PID_TIMER_IPROC;
@@ -373,19 +373,19 @@ int k_set_process_priority(int pid, int priority)
 	return RTX_OK;
 }
 
+
 void* k_message_to_envelope(MSG_BUF* message)
 {
-	return (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
+	return (U8*)message - SZ_MEM_BLOCK_HEADER;
 }
 
 void* k_envelope_to_message(MSG_ENVELOPE* envelope)
 {
-	return (MSG_BUF *)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
+	return (U8*)envelope + SZ_MEM_BLOCK_HEADER;
 }
 
-
 /**
- * @brief: Sends message_envelope to process_id (i.e. add the message defined at message_envelope to process_id's message queue
+ * @brief: Sends message to process with ID process_id (i.e. add the message defined at message_envelope to process_id's message queue
  * @return: RTX_OK upon success
  *          RTX_ERR upon failure
  */
@@ -401,7 +401,7 @@ int k_send_message(int process_id, void *message){
 	}
 	
 	// set sender and receiver proc_ids in the message_envelope memblock
-	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
+	envelope = (MSG_ENVELOPE *)k_message_to_envelope(message);
 	envelope->sender_pid = gp_current_process->m_pid;
 	envelope->destination_pid = process_id;
 	
@@ -463,7 +463,7 @@ void *k_receive_message(int* sender_id)
 		*sender_id = envelope->sender_pid;
 	}
 
-	message = (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
+	message = k_envelope_to_message(envelope);
 		
 	__enable_irq(); // atomic(off)
 	
@@ -492,7 +492,7 @@ void* ki_receive_message(int* sender_id)
 	}
 
 	// Return pointer to the msgbuf in the envelope
-	return (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
+	return k_envelope_to_message(envelope);
 }
 
 int k_delayed_send(int process_id, void* message, int delay)
@@ -508,7 +508,7 @@ int k_delayed_send(int process_id, void* message, int delay)
 	}
 	
 	// Get the pointer to the envelope from the message and set the envelope's data
-	envelope = (MSG_ENVELOPE*)((U8*)message - SZ_MEM_BLOCK_HEADER);
+	envelope = (MSG_ENVELOPE*)k_message_to_envelope(message);
 	envelope->sender_pid = gp_current_process->m_pid;
 	envelope->destination_pid = process_id;
 	envelope->send_time = get_current_time() + delay;

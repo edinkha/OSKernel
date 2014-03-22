@@ -496,10 +496,9 @@ void UART_IPROC(void)
 	gp_current_process = old_proc;
 }
 
-void proca(void) {
-	int sender_id;
+void proc_a(void)
+{
 	int num = 0;
-	int i;
 	
 	MSG_BUF* msg_received;
 	MSG_BUF* msg_to_send;
@@ -511,17 +510,17 @@ void proca(void) {
 	msg_to_send->mtext[0] = '%';
 	msg_to_send->mtext[1] = 'Z';
 	msg_to_send->mtext[2] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 	
 	while (1) {
-		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		msg_received = (MSG_BUF*)receive_message(0);
 		
 		if (msg_received->mtype == COMMAND) {
 			if (msg_received->mtext[1] == 'Z') { 
-				release_memory_block((void*)msg_received);
+				release_memory_block(msg_received);
 				break;
 			} else {
-				release_memory_block((void*)msg_received);
+				release_memory_block(msg_received);
 			}
 		
 		}
@@ -531,36 +530,24 @@ void proca(void) {
 		msg_to_send = (MSG_BUF*)request_memory_block();
 		msg_to_send->mtype = COUNT_REPORT;
 		itoa(num, msg_to_send->mtext);
-		send_message(PID_B, (void*)msg_to_send);
-		num = num + 1;
+		send_message(PID_B, msg_to_send);
+		num++;
 		release_processor();
 	}
 }
 
-void procb (void) {
-	int sender_id;
-	
+void proc_b (void)
+{
 	MSG_BUF* msg_received;
 	
 	while (1) {
-		msg_received = (MSG_BUF*)receive_message(&sender_id);
-		if(msg_received) {
-			send_message(PID_C, (void*)msg_received);	//==
-		}
+		msg_received = (MSG_BUF*)receive_message(0);
+		send_message(PID_C, msg_received);
 	}
 }
 
-int getLength (char* w) {
-	int result = 0;
-	
-	while (w[result]) {
-		result++;
-	}
-	return result+1;
-}
-
-void procc (void) {
-	int sender_id;
+void proc_c (void)
+{
 	MSG_BUF* msg_to_send;
 	MSG_BUF* msg_received;
 	Queue local_message_q;
@@ -569,25 +556,24 @@ void procc (void) {
 	
 	while (1) {
 		if (q_empty(&local_message_q)) {
-			msg_received = (MSG_BUF*)receive_message(&sender_id);
+			msg_received = (MSG_BUF*)receive_message(0);
 		} else { 
 			msg_received = (MSG_BUF*)envelope_to_message((MSG_ENVELOPE*)dequeue(&local_message_q));
 		}
 		
 		if (msg_received->mtype == COUNT_REPORT) {
 			int length = strlen(msg_received->mtext);
-			int pos = length - 2;
-			if (length > 1 && msg_received->mtext[pos]%2 == 0 && msg_received->mtext[pos+1] == '0'){
+			if (length > 1 && msg_received->mtext[length-2]%2 == 0 && msg_received->mtext[length-1] == '0'){
 				msg_received->mtype = CRT_DISPLAY;
 				strcpy(msg_received->mtext, "Process C\r\n");
-				send_message(PID_CRT, (MSG_BUF*)msg_received);
+				send_message(PID_CRT, msg_received);
 				
 				//hibernate
 				msg_to_send = (MSG_BUF*)request_memory_block();
 				msg_to_send->mtype = WAKEUP10;
 				delayed_send(PID_C, msg_to_send, 10000);
 				while (1) {
-					msg_received = (MSG_BUF*)receive_message(&sender_id);
+					msg_received = (MSG_BUF*)receive_message(0);
 					if (msg_received->mtype == WAKEUP10) {
 						break;
 					} else {
