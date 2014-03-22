@@ -44,6 +44,7 @@ int set_priority_preempt_check_3 = 0;
 int set_priority_preempt_check_4 = 0;
 int set_priority_preempt_check_5 = 0;
 int priority_tests_done = 0;
+int num_tests_failed = 0;
 
 /**
  * @brief: This is the process that runs all of the user level tests.
@@ -55,10 +56,15 @@ void user_test_runner(void)
 	MSG_BUF* message_to_unblock;
 
 	while (!done_testing) {
-		message_to_unblock = (MSG_BUF*)request_memory_block();
+		// Print introductory test strings
+		uart1_put_string("G023_test: START\r\n");
+		uart1_put_string("G023_test: Total 6 Tests\r\n");
 
-		// Begin by testing priority by sending message to priority_tests, which is blocked on receive
-		send_message(PID_P2, message_to_unblock);
+		message_to_unblock = (MSG_BUF*)request_memory_block();
+		
+		// PID_2 ... PID_6 haven't run yet (i.e. they're not blocked yet)
+		// So let's release processor so that proc2 can actually run
+		release_processor();
 
 		// When we change PID_P2 priority to LOWEST, we will end up back here...
 		// Releasing processor so that PID_P2 can resume
@@ -69,6 +75,26 @@ void user_test_runner(void)
 		// That is, this flag should only be set once priority tests are *actually* done
 		priority_tests_done = 1;
 
+		if (priority_tests_pass) {
+	        uart1_put_string("G023_test: Test 1 OK\r\n");
+	    } else {
+	        uart1_put_string("G023_test: Test 1 FAIL\r\n");
+	        num_tests_failed++;
+	    }
+
+	    // Print the total number of tests that passed
+	    uart1_put_string("G023_test: ");
+	    uart1_put_char('0' + 6 - num_tests_failed);
+	    uart1_put_string("/6 Tests OK\r\n");
+
+	    // Print the total number of tests that failed
+	    uart1_put_string("G023_test: ");
+	    uart1_put_char('0' + num_tests_failed);
+	    uart1_put_string("/6 Tests FAIL\r\n");
+
+	    uart1_put_string("G023_test: END\r\n");
+
+	    done_testing = 1;
 	}
 	while (1) {
 	
@@ -76,15 +102,12 @@ void user_test_runner(void)
 }
 
 /**
- * @brief: a process that prints 4x5 numbers and changes the priority of p3
+ * @brief: A process that thoroughly tests all parts of get/set priority API methods
  */
 void priority_tests(void)
 {
 	MSG_BUF* message_to_unblock;
-	int tests_passing = 0;
-
-	// Note: We don't care about who sent the message, but in this case, it should be user_test_runner
-	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+	int tests_passing = 1;
 
 	// Failure if not all user test procs current priority is set to LOWEST
 	// or there's an issue with get_process_priority
@@ -198,10 +221,7 @@ void priority_tests(void)
     // If 1 -> test case passed
 	priority_tests_pass = tests_passing;
 
-	// Release the memory block used to unblock this process
-	release_memory_block(message_to_unblock);
-
-	// Then request another message to block the process again
+	// Request a message to block this process
 	// This avoids running into PID_P2 accidentally / anytime after running the priority tests
 	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
 }
