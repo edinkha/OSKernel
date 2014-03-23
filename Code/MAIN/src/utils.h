@@ -25,4 +25,24 @@ int ctoi(char c);
  */
 char itoc(int i);
 
+/**
+ * Determines if the rest of the string, starting from index n,
+ * is made up of only whitespace (or non-printing) characters.
+ *
+ * @param {char*} s - The string to check for non-whitespace characters.
+ * @param {int} n - The index of the string at which to start the search.
+ * @returns {int} 1 if there is only whitespace characters starting at index n to the end of the string; else 0.
+ */
+int hasWhiteSpaceToEnd(char* s, int n);
+
+/**
+ * Converts an integer to a null-terminated string and stores the result in the array given by the str parameter.
+ * NOTE: Assumes the integer is base 10.
+ *
+ * @param {int} n - Integer to be converted to a string.
+ * @param {char*} str - Array in memory where to store the resulting null-terminated string.
+ * @returns {char*} A pointer to the resulting null-terminated string, same as parameter str.
+ */
+char* itoa (int n, char* str);
+
 #endif /* UTILS_H_ */

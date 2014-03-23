@@ -10,12 +10,9 @@
 #define RTX_OK 0
 #define NULL 0
 #define NUM_TEST_PROCS 6
+#define NUM_STRESS_PROCS 3
 
-#ifdef DEBUG_0
-#define USR_SZ_STACK 0x200  /* user proc stack size 512B */
-#else
-#define USR_SZ_STACK 0x100  /* user proc stack size 218B */
-#endif /* DEBUG_0 */
+#define USR_SZ_STACK 0x12C  /* user proc stack size 300 B */
 
 /* Process Priority. The bigger the number is, the lower the priority is*/
 #define HIGH    0
@@ -45,7 +42,6 @@
 #define DEFAULT 0
 #define KCD_REG 1
 #define CRT_DISPLAY 2
-#define USER_INPUT 3
 
 /* ----- Types ----- */
 typedef unsigned char U8;
@@ -89,7 +85,7 @@ extern int k_set_process_priority(int pid, int prio);
 #define set_process_priority(pid, prio) _set_process_priority((U32)k_set_process_priority, pid, prio)
 extern int _set_process_priority(U32 p_func, int pid, int prio) __SVC_0;
 
-/* Memeory Management */
+/* Memory Management */
 extern void *k_request_memory_block(void);
 #define request_memory_block() _request_memory_block((U32)k_request_memory_block)
 extern void *_request_memory_block(U32 p_func) __SVC_0;
