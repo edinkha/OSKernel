@@ -20,11 +20,6 @@
 #include <assert.h>
 #endif
 
-char g_buffer[];
-char* gp_buffer = g_buffer;
-char g_char_in;
-char g_char_out;
-
 extern U32 g_switch_flag;
 extern PCB *gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
@@ -413,8 +408,6 @@ void print(PriorityQueue* pqueue)
 // UART initialized in uart_irq.c
 void UART_IPROC(void)
 {
-	MSG_BUF* received_message;
-	MSG_BUF* message_to_send;
 	LPC_UART_TypeDef *pUart = (LPC_UART_TypeDef *) LPC_UART0;
 	U8 IIR_IntId;	    // Interrupt ID from IIR
 
@@ -433,7 +426,9 @@ void UART_IPROC(void)
 	
 	if (IIR_IntId & IIR_RDA) { // Receive Data Available
 		/* read UART. Read RBR will clear the interrupt */
-		g_char_in = pUart->RBR;
+		char g_char_in = pUart->RBR;
+		
+		MSG_BUF* message_to_send;
 		
 	#ifdef DEBUG_0
 		uart1_put_string("Reading a char = ");
@@ -462,27 +457,20 @@ void UART_IPROC(void)
 			message_to_send->mtype = USER_INPUT;
 			message_to_send->mtext[0] = g_char_in;
 			message_to_send->mtext[1] = '\0';
-			k_send_message(PID_KCD, (void*)message_to_send);
+			k_send_message(PID_KCD, message_to_send);
 		}
 	}
 	else if (IIR_IntId & IIR_THRE) {
 		/* THRE Interrupt, transmit holding register becomes empty */
-		received_message = (MSG_BUF*)ki_receive_message((int*)0);
-		gp_buffer = received_message->mtext;
 		
-		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit
-		//pUart->THR = '\0';
+		// Receive a message (from the CRT) and write its text to UART0
+		MSG_BUF* received_message = (MSG_BUF*)ki_receive_message((int*)0);
+		uart_put_string(0, received_message->mtext);
 		
-		while (*gp_buffer != '\0' ) {
-			g_char_out = *gp_buffer;
-			pUart->THR = g_char_out;
-			gp_buffer++;
-			uart1_put_string("Printing a character to UART0...\r\n");
+		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit to end the interrupt
+		
+		k_release_memory_block(received_message);	
 		}
-		
-		gp_buffer = g_buffer;	
-		k_release_memory_block((void*)received_message);	
-	}
 	else {  /* not implemented yet */
 	#ifdef DEBUG_0
 		uart1_put_string("Should not get here!\n\r");
