@@ -339,10 +339,6 @@ int k_set_process_priority(int pid, int priority)
 				return RTX_ERR;
 			}
 			push(ready_pq, (QNode*)pcb, priority);
-			pcb->m_priority = priority;
-			k_release_processor();
-			__disable_irq();
-			break;
 		default:
 			pcb->m_priority = priority;
 			k_release_processor();
