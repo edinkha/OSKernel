@@ -468,7 +468,7 @@ void UART_IPROC(void)
 			if (g_char_in == '\r') {
 				uart0_put_char('\n');
 				uart0_put_string("ERROR: System out of memory!\r\n");
-	}
+			}
 		}
 	}
 	else if (IIR_IntId & IIR_THRE) {
@@ -582,4 +582,3 @@ void proc_c (void)
 		release_processor();
 	}
 }
-
