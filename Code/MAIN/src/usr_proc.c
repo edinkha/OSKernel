@@ -6,6 +6,12 @@
  * NOTE: Each process is in an infinite loop. Processes never terminate.
  */
 
+#ifdef DEBUG_SIM_TIME
+#define ONE_SECOND 30
+#else
+#define ONE_SECOND 1000
+#endif
+
 #include "rtx.h"
 #include "uart_polling.h"
 #include "usr_proc.h"
@@ -34,7 +40,7 @@ void set_test_procs() {
 	g_test_procs[2].mpf_start_pc = &memory_tests;
 	g_test_procs[3].mpf_start_pc = &general_messaging_tests;
 	g_test_procs[4].mpf_start_pc = &delayed_messaging_tests;
-	g_test_procs[5].mpf_start_pc = &wall_clock_tests;
+	g_test_procs[5].mpf_start_pc = &set_priority_command_tests;
 }
 
 int done_testing = 0;
@@ -50,6 +56,8 @@ int block_check_2 = 0;
 int memory_tests_pass = 0;
 int send_check_1 = 0;
 int general_messaging_tests_pass = 0;
+int delayed_send_check_1 = 0;
+int delayed_messaging_tests_pass = 0;
 int num_tests_failed = 0;
 
 /**
@@ -62,6 +70,7 @@ void user_test_runner(void)
 	MSG_BUF* message_to_unblock;
 	void* mem_block_to_unblock;
 	MSG_BUF* message_from_PID4;
+	MSG_BUF* message_from_PID5;
 	int sender_id;
 
 	while (!done_testing) {
@@ -114,7 +123,7 @@ void user_test_runner(void)
 	        num_tests_failed++;
 	    }
 
-	    // Unblock PID_P4 so we can test memory primitives
+	    // Unblock PID_P4 so we can test messaging primitives
 	    message_to_unblock = (MSG_BUF*)request_memory_block();
 	    message_to_unblock->mtype = DEFAULT;
 	    message_to_unblock->mtext[0] = 'U';
@@ -136,15 +145,48 @@ void user_test_runner(void)
 	        num_tests_failed++;
 	    }
 
+	    // Unblock PID_P5 so we can test delayed messaging primitive
+	    message_to_unblock = (MSG_BUF*)request_memory_block();
+	    message_to_unblock->mtype = DEFAULT;
+	    message_to_unblock->mtext[0] = 'U';
+	    message_to_unblock->mtext[1] = '\0';
+	    send_message(PID_P5, message_to_unblock);
+
+	    // PID_P5 releases processor so that PID_P1 can be blocked on receive
+	    message_from_PID5 = (MSG_BUF*)receive_message(&sender_id);
+	    if (sender_id == PID_P5 && release_memory_block(message_from_PID5) != RTX_ERR) {
+					delayed_send_check_1 = 1;
+	    }
+	    // Let PID_P5 run again
+	    message_to_unblock = (MSG_BUF*)request_memory_block();
+	    message_to_unblock->mtype = DEFAULT;
+	    message_to_unblock->mtext[0] = 'U';
+	    message_to_unblock->mtext[1] = '\0';
+	    send_message(PID_P5, message_to_unblock);
+
+	    if (delayed_messaging_tests_pass) {
+	        uart1_put_string("G023_test: Test 4 OK\r\n");
+	    } else {
+	        uart1_put_string("G023_test: Test 4 FAIL\r\n");
+	        num_tests_failed++;
+	    }
+
+	    // Unblock PID_P6 so we can test set priority command process
+	    message_to_unblock = (MSG_BUF*)request_memory_block();
+	    message_to_unblock->mtype = DEFAULT;
+	    message_to_unblock->mtext[0] = 'U';
+	    message_to_unblock->mtext[1] = '\0';
+	    send_message(PID_P6, message_to_unblock);
+
 	    // Print the total number of tests that passed
 	    uart1_put_string("G023_test: ");
-	    uart1_put_char('0' + 6 - num_tests_failed);
-	    uart1_put_string("/6 Tests OK\r\n");
+	    uart1_put_char('0' + 5 - num_tests_failed);
+	    uart1_put_string("/5 Tests OK\r\n");
 
 	    // Print the total number of tests that failed
 	    uart1_put_string("G023_test: ");
 	    uart1_put_char('0' + num_tests_failed);
-	    uart1_put_string("/6 Tests FAIL\r\n");
+	    uart1_put_string("/5 Tests FAIL\r\n");
 
 	    uart1_put_string("G023_test: END\r\n");
 
@@ -381,7 +423,7 @@ void general_messaging_tests(void)
 	int sender_id;
 
 	// Should only get here once priority_tests changes its priority to LOWEST
-	set_priority_preempt_check_3 = 1;
+	set_priority_preempt_check_2 = 1;
 
 	// Block process by receiving message so that next proc (LOWEST PRIORITY) can run
 	// Note: We don't care about who sent the message, but in this case, it should be user_test_runner
@@ -403,7 +445,7 @@ void general_messaging_tests(void)
 		|| sender_id != PID_P4) {
 		tests_passing = 0;
 	}
-	if (release_memory_block(message_to_send) == RTX_ERR) {
+	if (release_memory_block(message_received) == RTX_ERR) {
 		tests_passing = 0;
 	}
 
@@ -435,30 +477,85 @@ void general_messaging_tests(void)
 }
 
 /**
- * @brief: a process responsible for the three hot keys
+ * @brief: a process responsible for testing delayed messaging
  */
 void delayed_messaging_tests(void)
 {
 	MSG_BUF* message_to_unblock;
+	MSG_BUF* message_to_send;
+	MSG_BUF* message_received;
+	int tests_passing = 1;
+	int sender_id;
 
 	// Should only get here once priority_tests changes its priority to LOWEST
-	set_priority_preempt_check_4 = 1;
+	set_priority_preempt_check_3 = 1;
 
 	// Block process by receiving message so that next proc (LOWEST PRIORITY) can run
 	// Note: We don't care about who sent the message, but in this case, it should be user_test_runner
 	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+	// We can safely release the memory block used to get this far
+	release_memory_block(message_to_unblock);
+	
+	// Send message to self after 2 seconds
+	message_to_send = (MSG_BUF*)request_memory_block();
+	message_to_send->mtype = DEFAULT;
+	message_to_send->mtext[0] = 'S';
+	message_to_send->mtext[1] = '\0';
+	delayed_send(PID_P5, message_to_send, 2 * ONE_SECOND);
+
+	// Ensure that address of message received is the same as that of the message sent 
+	// and that sender_id is PID_P5
+	message_received = (MSG_BUF*)receive_message(&sender_id);
+	if (message_received != message_to_send
+		|| sender_id != PID_P5) {
+		tests_passing = 0;
+	}
+	if (release_memory_block(message_received) == RTX_ERR) {
+		tests_passing = 0;
+	}
+
+	// Ensure that sending a message to a blocked on receive process (PID_P1) unblocks it 
+	// after about 3 seconds
+	release_processor();
+	message_to_send = (MSG_BUF*)request_memory_block();
+	message_to_send->mtype = DEFAULT;
+	message_to_send->mtext[0] = 'S';
+	message_to_send->mtext[1] = '\0';
+	delayed_send(PID_P1, message_to_send, 3 * ONE_SECOND);
+	
+	// Request a message to block this process until PID_P1 received the delayed message
+	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+	release_memory_block(message_to_unblock);
+
+	// Should have switched to P1, set flag, and come back here
+	if (!delayed_send_check_1) {
+		tests_passing = 0;
+	}
+
+	// Send test case result back to PID_P1
+    // If 0 -> test case failed
+    // If 1 -> test case passed
+	delayed_messaging_tests_pass = tests_passing;
+
+	// Request a message to block this process
+	// This avoids running into PID_P5 accidentally / anytime after running the priority tests
+	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+
+	// Theoretically should never get here, but just to be safe...
+	release_memory_block(message_to_unblock);
+
 }
 
 /**
- * @brief: a process responsible for resetting the Wall Clock
+ * @brief: a process responsible for testing the set priority command process
  */
-void wall_clock_tests(void)
+void set_priority_command_tests(void)
 {
 	MSG_BUF* message_to_unblock;
 
 
 	// Should only get here once priority_tests changes its priority to LOWEST
-	set_priority_preempt_check_2 = 1;
+	set_priority_preempt_check_4 = 1;
 
 	// Block process by receiving message so that next proc (LOWEST PRIORITY) can run
 	// Note: We don't care about who sent the message, but in this case, it should be user_test_runner

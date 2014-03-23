@@ -21,6 +21,10 @@
 #define NUM_STRESS_PROCS 3
 #define NUM_PROCS 16
 
+#ifdef DEBUG_CUSTOM_HEAP
+#define NUM_HEAP_BLOCKS 9
+#endif /* DEBUG_CUSTOM_HEAP */
+
 #define USR_SZ_MEM_BLOCK 0x80    /* heap memory block size is 128 B */
 #define SZ_MEM_BLOCK_HEADER 0x10 /* memory block header size is 16 B */
 #define USR_SZ_STACK 0x12C  /* user proc stack size 300 B */

@@ -179,7 +179,7 @@ PCB* scheduler(void)
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
-		return gp_pcbs[0];
+		return gp_pcbs[15];
 	}
 	else {
 		return next_pcb;
