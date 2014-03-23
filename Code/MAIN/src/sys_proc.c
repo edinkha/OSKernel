@@ -464,6 +464,13 @@ void UART_IPROC(void)
 			message_to_send->mtext[1] = '\0';
 			k_send_message(PID_KCD, message_to_send);
 		}
+		else {
+			uart0_put_char(g_char_in);
+			if (g_char_in == '\r') {
+				uart0_put_char('\n');
+				uart0_put_string("ERROR: System out of memory!\r\n");
+			}
+		}
 	}
 	else if (IIR_IntId & IIR_THRE) {
 		/* THRE Interrupt, transmit holding register becomes empty */
