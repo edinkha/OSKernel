@@ -11,6 +11,7 @@
 #include "usr_proc.h"
 #include "utils.h"
 #include "string.h"
+#include "forward_list.h"
 
 #ifdef DEBUG_0
 #include "printf.h"
@@ -265,10 +266,8 @@ void memory_tests(void)
 	MSG_BUF* message_to_unblock;
 	void* mem_block_1;
 	void* mem_block_2;
-	// NOTE: should be set to value of NUM_HEAP_BLOCKS
-	void* all_mem_blocks[9];
+	ForwardList all_mem_blocks;
 	int tests_passing = 1;
-	int i;
 
 	// Should only get here once priority_tests changes its priority to LOWEST
 	set_priority_preempt_check_1 = 1;
@@ -318,18 +317,16 @@ void memory_tests(void)
 	release_processor();
 	// Then, back in PID_P1, we request a memory block and release processor
 	// We end up back here, and we want to request every memory block available (i.e. block on memory)
-	for (i = 0; i < 9; i++) {
-		all_mem_blocks[i] = request_memory_block();
+	init(&all_mem_blocks);
+	while (!block_check_1) {
+		push_front(&all_mem_blocks, (ListNode*)request_memory_block());
 	}
 	// We should end up at PID_P1 again, where we release the previously requested memory block
 	// We should now be unblocked, and we should release all of the memory we just requested
 	block_check_2 = 1;
-	if (!block_check_1) {
-		tests_passing = 0;
-	}
 
-	for (i = 0; i < 9; i++) {
-		if (release_memory_block(all_mem_blocks[i]) == RTX_ERR) {
+	while (!empty(&all_mem_blocks)) {
+		if (release_memory_block((void*)pop_front(&all_mem_blocks)) == RTX_ERR) {
 			tests_passing = 0;
 		}
 	}
