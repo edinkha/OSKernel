@@ -184,6 +184,6 @@ void timer_i_process()
 	// Remove expired messages from the list of delayed messages and send them
 	while (!empty(delayed_messages) && ((MSG_ENVELOPE*)delayed_messages->front)->send_time <= g_timer_count) {
 		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)pop_front(delayed_messages);
-		k_send_message(envelope->destination_pid, k_envelope_to_message(envelope));
+		k_send_message(envelope->destination_pid, envelope);
 	}
 }

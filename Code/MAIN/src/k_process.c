@@ -395,15 +395,25 @@ int k_send_message(int process_id, void *message){
 	
 	__disable_irq(); // atomic(on)
 	
-	// error checking
-	if (message == NULL || process_id < 0) {
-		return RTX_ERR;
+	/* If the message is coming from the timer i-process, the message is actually of
+	 * the type MSG_ENVELOPE (instead of MSG_BUF like other processes will pass in).
+	 * Also, since the timer is just for forwarding messages, the sender and
+	 * destination PIDs should not be modified.
+	 */
+	if (gp_current_process->m_pid == PID_TIMER_IPROC) {
+		envelope = (MSG_ENVELOPE*)message;
 	}
-	
-	// set sender and receiver proc_ids in the message_envelope memblock
-	envelope = (MSG_ENVELOPE *)k_message_to_envelope(message);
-	envelope->sender_pid = gp_current_process->m_pid;
-	envelope->destination_pid = process_id;
+	else {
+		// error checking
+		if (message == NULL || process_id < 0) {
+			return RTX_ERR;
+		}
+		
+		// set sender and receiver proc_ids in the message_envelope memblock
+		envelope = (MSG_ENVELOPE *)k_message_to_envelope(message);
+		envelope->sender_pid = gp_current_process->m_pid;
+		envelope->destination_pid = process_id;
+	}
 	
 	receiving_proc = get_proc_by_pid(process_id);
 
