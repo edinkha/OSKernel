@@ -48,7 +48,6 @@ int num_reg_commands = 0;    // Number of currently registered commands
  */
 void set_priority_command_proc(void)
 {
-	int sender_id;
 	int pid;
 	int priority;
 	MSG_BUF* msg_received;
@@ -60,7 +59,7 @@ void set_priority_command_proc(void)
 	msg_to_send->mtext[0] = '%';
 	msg_to_send->mtext[1] = 'C';
 	msg_to_send->mtext[2] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 	
 	while(1) {
 		// Initialize pid and priority to error
@@ -68,7 +67,7 @@ void set_priority_command_proc(void)
 		priority = RTX_ERR;
 		
 		// Receive message from KCD
-		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		msg_received = (MSG_BUF*)receive_message(0);
 		
 		if (msg_received->mtype == COMMAND) {
 			// We're looking for a string of the following form: %C {1,...,13} {0,...,3}
@@ -122,7 +121,6 @@ void proc_wall_clock()
 	int minutes;
 	int seconds;
 	int mtype_validator = -1; // Validates messages to determine if the wall clock should run
-	int sender_id;
 	MSG_BUF* msg_received;
 	MSG_BUF* msg_to_send;
 	
@@ -133,7 +131,7 @@ void proc_wall_clock()
 	msg_to_send->mtext[1] = 'W';
 	msg_to_send->mtext[2] = 'R';
 	msg_to_send->mtext[3] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 
 	// Tell the KCD to register the "%WS" command with the wall clock process
 	msg_to_send = (MSG_BUF*)request_memory_block();
@@ -142,7 +140,7 @@ void proc_wall_clock()
 	msg_to_send->mtext[1] = 'W';
 	msg_to_send->mtext[2] = 'S';
 	msg_to_send->mtext[3] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 
 	// Tell the KCD to register the "%WT" command with the wall clock process
 	msg_to_send = (MSG_BUF*)request_memory_block();
@@ -151,11 +149,11 @@ void proc_wall_clock()
 	msg_to_send->mtext[1] = 'W';
 	msg_to_send->mtext[2] = 'T';
 	msg_to_send->mtext[3] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 
 	while (1) {
 		// Receive message from KCD (command input), or self (to display time)
-		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		msg_received = (MSG_BUF*)receive_message(0);
 		
 		if (msg_received->mtype == COMMAND) {
 			/* NOTE:
@@ -254,6 +252,7 @@ void proc_wall_clock()
 		release_memory_block(msg_received);
 	}
 }
+
 
 /**
  * Gets the PID of the process that registered the input command
@@ -385,7 +384,7 @@ void CRT(void)
 			// trigger the UART THRE interrupt bit so that UART i-proc runs
 			pUart->IER ^= IER_THRE;
 		} else {
-			release_memory_block((void*)received_message);
+			release_memory_block(received_message);
 		}
 	}
 }
@@ -462,7 +461,14 @@ void UART_IPROC(void)
 			message_to_send->mtype = USER_INPUT;
 			message_to_send->mtext[0] = g_char_in;
 			message_to_send->mtext[1] = '\0';
-			k_send_message(PID_KCD, (void*)message_to_send);
+			k_send_message(PID_KCD, message_to_send);
+		}
+		else {
+			uart0_put_char(g_char_in);
+			if (g_char_in == '\r') {
+				uart0_put_char('\n');
+				uart0_put_string("ERROR: System out of memory!\r\n");
+	}
 		}
 	}
 	else if (IIR_IntId & IIR_THRE) {
@@ -492,3 +498,88 @@ void UART_IPROC(void)
 	//Restore the current process
 	gp_current_process = old_proc;
 }
+
+void proc_a(void)
+{
+	int num = 0;
+	MSG_BUF* msg_received;
+	MSG_BUF* msg_to_send;
+
+	// Tell the KCD to register the "%Z" command
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'Z';
+	msg_to_send->mtext[2] = '\0';
+	send_message(PID_KCD, msg_to_send);
+	
+	// Wait for the "%Z" command and discard any other messages while waiting
+	while (1) {
+		msg_received = (MSG_BUF*)receive_message(0);
+		if (msg_received->mtype == COMMAND) {
+			release_memory_block(msg_received);
+			break;
+		}
+		release_memory_block(msg_received);
+	}
+	
+	num = 0;
+	while (1) {
+		msg_to_send = (MSG_BUF*)request_memory_block();
+		msg_to_send->mtype = COUNT_REPORT;
+		itoa(num, msg_to_send->mtext);
+		send_message(PID_B, msg_to_send);
+		num++;
+		release_processor();
+	}
+}
+
+void proc_b (void)
+{
+	while (1) {
+		MSG_BUF* msg_received = (MSG_BUF*)receive_message(0);
+		send_message(PID_C, msg_received);
+	}
+}
+
+void proc_c (void)
+{
+	MSG_BUF* msg_to_send;
+	MSG_BUF* msg_received;
+	Queue local_message_q;
+	
+	init_q(&local_message_q);
+	
+	while (1) {
+		if (q_empty(&local_message_q)) {
+			msg_received = (MSG_BUF*)receive_message(0);
+		} else { 
+			msg_received = (MSG_BUF*)envelope_to_message((MSG_ENVELOPE*)dequeue(&local_message_q));
+		}
+		
+		if (msg_received->mtype == COUNT_REPORT) {
+			int length = strlen(msg_received->mtext);
+			if (length > 1 && msg_received->mtext[length-2]%2 == 0 && msg_received->mtext[length-1] == '0'){
+				msg_received->mtype = CRT_DISPLAY;
+				strcpy(msg_received->mtext, "Process C\r\n");
+				send_message(PID_CRT, msg_received);
+				
+				//hibernate
+				msg_to_send = (MSG_BUF*)request_memory_block();
+				msg_to_send->mtype = WAKEUP10;
+				delayed_send(PID_C, msg_to_send, 10000);
+				while (1) {
+					msg_received = (MSG_BUF*)receive_message(0);
+					if (msg_received->mtype == WAKEUP10) {
+						break;
+					} else {
+						enqueue(&local_message_q, (QNode*)message_to_envelope(msg_received));
+					}
+				}
+			}
+		}
+		release_memory_block(msg_received);
+		release_processor();
+	}
+}
+

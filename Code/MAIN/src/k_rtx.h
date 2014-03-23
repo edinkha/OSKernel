@@ -18,17 +18,12 @@
 #define RTX_OK  0
 #define NULL 0
 #define NUM_TEST_PROCS 6
-#define NUM_PROCS 13
+#define NUM_STRESS_PROCS 3
+#define NUM_PROCS 16
 
 #define USR_SZ_MEM_BLOCK 0x80    /* heap memory block size is 128 B */
 #define SZ_MEM_BLOCK_HEADER 0x10 /* memory block header size is 16 B */
-
-#ifdef DEBUG_0
-#define USR_SZ_STACK 0x200		/* user proc stack size 512 B */
-#define NUM_HEAP_BLOCKS 9		/* Blocks just for debugging */
-#else
-#define USR_SZ_STACK 0x100		/* user proc stack size 218 B */
-#endif /* DEBUG_0 */
+#define USR_SZ_STACK 0x12C  /* user proc stack size 300 B */
 
 /* Process Priority. The bigger the number is, the lower the priority is*/
 #define HIGH    0
@@ -60,6 +55,8 @@
 #define CRT_DISPLAY 2
 #define USER_INPUT 3
 #define COMMAND 4
+#define COUNT_REPORT 5
+#define WAKEUP10 6
 
 /*----- Types -----*/
 typedef unsigned char U8;
@@ -107,14 +104,14 @@ typedef struct msg_envelope
 	int destination_pid;
 	uint32_t send_time;
 	int mtype;              /* user defined message type */
-	char mtext[1];            /* body of the message */
+	char mtext[12];         /* body of the message */
 } MSG_ENVELOPE;
 
 /* message buffer */
 typedef struct msgbuf
 {
 	int mtype;              /* user defined message type */
-	char mtext[1];            /* body of the message */
+	char mtext[12];         /* body of the message */
 } MSG_BUF;
 
 typedef struct mem_block
@@ -148,7 +145,7 @@ extern int k_set_process_priority(int pid, int prio);
 #define set_process_priority(pid, prio) _set_process_priority((U32)k_set_process_priority, pid, prio)
 extern int _set_process_priority(U32 p_func, int pid, int prio) __SVC_0;
 
-/* Memeory Management */
+/* Memory Management */
 extern void *ki_request_memory_block(void);
 extern void *k_request_memory_block(void);
 #define request_memory_block() _request_memory_block((U32)k_request_memory_block)
@@ -167,6 +164,14 @@ extern void *ki_receive_message(int *p_pid);
 extern void *k_receive_message(int *p_pid);
 #define receive_message(p_pid) _receive_message((U32)k_receive_message, p_pid)
 extern void *_receive_message(U32 p_func, void *p_pid) __SVC_0;
+
+extern void *k_message_to_envelope(MSG_BUF* message);
+#define message_to_envelope(message) _message_to_envelope((U32)k_message_to_envelope, message)
+extern void *_message_to_envelope(U32 p_func, void* message) __SVC_0;
+
+extern void *k_envelope_to_message(MSG_ENVELOPE* envelope);
+#define envelope_to_message(envelope) _envelope_to_message((U32)k_envelope_to_message, envelope)
+extern void *_envelope_to_message(U32 p_func, void* envelope) __SVC_0;
 
 /* Timing Service */
 extern int k_delayed_send(int pid, void *p_msg, int delay);

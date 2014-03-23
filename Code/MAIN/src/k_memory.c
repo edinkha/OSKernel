@@ -94,22 +94,18 @@ void memory_init(void)
   
 	/* allocate memory for the heap */
 	
-	// Assign memory for the heap struct
+	// Assign memory for the heap structure (list of memory blocks)
 	heap = (ForwardList *)p_end; 
 	p_end += sizeof(ForwardList);
 	init(heap);
 	
-	//Find the address of the end of the stack
-	//USR_SZ_STACK + 1 to take into account the 8-byte alignment
-	//-1 for extra padding
+	// Find the address of the end of the stack
+	// USR_SZ_STACK + 1 to take into account the 8-byte alignment
+	// -1 for extra padding
 	stack_end_addr = (U32 *)(RAM_END_ADDR - ((NUM_PROCS) * (USR_SZ_STACK + 1)) - 1);
 	
 	// Build the heap
-#ifdef DEBUG_0
-	for (i = 0; i < NUM_HEAP_BLOCKS; i++) {
-#else
 	while (p_end + USR_SZ_MEM_BLOCK < (U8 *)stack_end_addr) {
-#endif
 		heap_block = (MEM_BLOCK *)p_end;
 		push_front(heap, (ListNode *)heap_block);
 		p_end += USR_SZ_MEM_BLOCK;
