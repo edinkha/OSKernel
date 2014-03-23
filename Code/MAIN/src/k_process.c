@@ -23,7 +23,7 @@ PCB *gp_current_process = NULL; /* always point to the current RUNNING process *
 
 U32 g_switch_flag = 0;          /* whether to continue to run the process before the UART receive interrupt */
                                 /* 1 means to switch to another process, 0 means to continue the current process */
-																/* this value will be set by UART handler */
+								/* this value will be set by UART handler and timer i-processes */
 
 /* process initialization table */
 PROC_INIT g_proc_table[NUM_PROCS];
@@ -424,9 +424,12 @@ int k_send_message(int process_id, void *message){
 		}
 		push(ready_pq, (QNode*)receiving_proc, receiving_proc->m_priority);
 		receiving_proc->m_state = READY;
-		// Only preempt if the current process is not an i-process
-		if (!gp_current_process->m_is_iproc) {
-			k_release_processor();
+		
+		if (gp_current_process->m_is_iproc) {
+			g_switch_flag = 1; // Tell the i-process irq handler to release the processor when it it finished
+		}
+		else {
+			k_release_processor(); // Handle preemption
 		}
 	}
 
