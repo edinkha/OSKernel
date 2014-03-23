@@ -44,6 +44,7 @@ int set_priority_preempt_check_3 = 0;
 int set_priority_preempt_check_4 = 0;
 int set_priority_preempt_check_5 = 0;
 int priority_tests_done = 0;
+int memory_tests_pass = 0;
 int num_tests_failed = 0;
 
 /**
@@ -79,6 +80,19 @@ void user_test_runner(void)
 	        uart1_put_string("G023_test: Test 1 OK\r\n");
 	    } else {
 	        uart1_put_string("G023_test: Test 1 FAIL\r\n");
+	        num_tests_failed++;
+	    }
+
+	    // Unblock PID_P3 so we can test memory primitives
+	    message_to_unblock->mtype = DEFAULT;
+	    message_to_unblock->mtext[0] = 'U';
+	    message_to_unblock->mtext[1] = '\0';
+	    send_message(PID_P3, message_to_unblock);
+
+	    if (memory_tests_pass) {
+	        uart1_put_string("G023_test: Test 2 OK\r\n");
+	    } else {
+	        uart1_put_string("G023_test: Test 2 FAIL\r\n");
 	        num_tests_failed++;
 	    }
 
@@ -224,6 +238,9 @@ void priority_tests(void)
 	// Request a message to block this process
 	// This avoids running into PID_P2 accidentally / anytime after running the priority tests
 	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+
+	// Theoretically should never get here, but just to be safe...
+	release_memory_block(message_to_unblock);
 }
 
 /**
@@ -232,6 +249,9 @@ void priority_tests(void)
 void memory_tests(void)
 {
 	MSG_BUF* message_to_unblock;
+	void* mem_block_1;
+	void* mem_block_2;
+	int tests_passing = 1;
 
 	// Should only get here once priority_tests changes its priority to LOWEST
 	set_priority_preempt_check_1 = 1;
@@ -239,6 +259,55 @@ void memory_tests(void)
 	// Block process by receiving message so that next proc (LOWEST PRIORITY) can run
 	// Note: We don't care about who sent the message, but in this case, it should be user_test_runner
 	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+
+	// We should get unblocked by user_test_runner after running priority tests
+	// Test that requesting a block, releasing it, then requesting it again gets the same block
+	mem_block_1 = request_memory_block();
+	mem_block_2 = mem_block_1;
+
+	// Test basic memory block release
+	if (release_memory_block(mem_block_1) == RTX_ERR) {
+		tests_passing = 0;
+	}
+
+	mem_block_1 = (void*)0;
+	if (mem_block_1 == mem_block_2) {
+		tests_passing = 0;
+	}
+
+	mem_block_1 = request_memory_block();
+	
+	if (mem_block_1 != mem_block_2) {
+		tests_passing = 0;
+	}
+
+	mem_block_2 = request_memory_block();
+
+	// After requesting 2nd memblock, addresses should be different
+	if (mem_block_1 == mem_block_2) {
+		tests_passing = 0;
+	}
+
+	// Release two blocks at once
+	if (release_memory_block(mem_block_1) == RTX_ERR
+		|| release_memory_block(mem_block_2) == RTX_ERR) {
+		tests_passing = 0;
+	}
+
+	// Send test case result back to PID_P1
+    // If 0 -> test case failed
+    // If 1 -> test case passed
+	memory_tests_pass = tests_passing;
+
+	// Release the memory block we used to run these tests
+	release_memory_block(message_to_unblock);
+
+	// Request a message to block this process
+	// This avoids running into PID_P2 accidentally / anytime after running the priority tests
+	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+
+	// Theoretically should never get here, but just to be safe...
+	release_memory_block(message_to_unblock);
 }
 
 /**
