@@ -12,11 +12,7 @@
 #define NUM_TEST_PROCS 6
 #define NUM_STRESS_PROCS 3
 
-#ifdef DEBUG_0
-#define USR_SZ_STACK 0x200  /* user proc stack size 512B */
-#else
-#define USR_SZ_STACK 0x100  /* user proc stack size 218B */
-#endif /* DEBUG_0 */
+#define USR_SZ_STACK 0x12C  /* user proc stack size 300 B */
 
 /* Process Priority. The bigger the number is, the lower the priority is*/
 #define HIGH    0
