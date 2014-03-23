@@ -162,7 +162,7 @@ void timer_i_process()
 	// Insert the envelopes of any received messages into the list of delayed messages
 	while (message = (MSG_BUF*)ki_receive_message(0)) {
 		// Get the pointer to the envelope from the message
-		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)((U8*)message - SZ_MEM_BLOCK_HEADER);
+		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)k_message_to_envelope(message);
 
 		/* Insert the envelope into the delayed messages list based on the send time.
 		 * The later the send time, the farther to the back of the list the message will be inserted.
@@ -184,6 +184,6 @@ void timer_i_process()
 	// Remove expired messages from the list of delayed messages and send them
 	while (!empty(delayed_messages) && ((MSG_ENVELOPE*)delayed_messages->front)->send_time <= g_timer_count) {
 		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)pop_front(delayed_messages);
-		k_send_message(envelope->destination_pid, (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER));
+		k_send_message(envelope->destination_pid, k_envelope_to_message(envelope));
 	}
 }
