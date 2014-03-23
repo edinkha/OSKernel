@@ -469,20 +469,19 @@ void UART_IPROC(void)
 		/* THRE Interrupt, transmit holding register becomes empty */
 		received_message = (MSG_BUF*)ki_receive_message((int*)0);
 		gp_buffer = received_message->mtext;
+		
+		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit
+		//pUart->THR = '\0';
+		
 		while (*gp_buffer != '\0' ) {
 			g_char_out = *gp_buffer;
 			pUart->THR = g_char_out;
 			gp_buffer++;
+			uart1_put_string("Printing a character to UART0...\r\n");
 		}
-
-		pUart->IER ^= IER_THRE; // toggle the IER_THRE bit
-	#ifdef DEBUG_0
-		printf("Writing a char = %c \n\r", g_char_out);
-		uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
-	#endif // DEBUG_0		
-		//pUart->THR = '\0';
-		k_release_memory_block((void*)received_message);
-		gp_buffer = g_buffer;		
+		
+		gp_buffer = g_buffer;	
+		k_release_memory_block((void*)received_message);	
 	}
 	else {  /* not implemented yet */
 	#ifdef DEBUG_0

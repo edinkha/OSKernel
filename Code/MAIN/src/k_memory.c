@@ -67,10 +67,6 @@ void memory_init(void)
 		gp_pcbs[i] = (PCB *)p_end;
 		p_end += sizeof(PCB);
 	}
-#ifdef DEBUG_0  
-	printf("gp_pcbs[0] = 0x%x \r\n", gp_pcbs[0]);
-	printf("gp_pcbs[1] = 0x%x \r\n", gp_pcbs[1]);
-#endif
 	
 	/* prepare for alloc_stack() to allocate memory for stacks */	
 	gp_stack = (U32 *)RAM_END_ADDR;
@@ -97,9 +93,6 @@ void memory_init(void)
 	init(delayed_messages);
   
 	/* allocate memory for the heap */
-#ifdef DEBUG_0
-	printf("p_end = 0x%x \r\n", p_end);
-#endif
 	
 	// Assign memory for the heap struct
 	heap = (ForwardList *)p_end; 
@@ -121,10 +114,6 @@ void memory_init(void)
 		push_front(heap, (ListNode *)heap_block);
 		p_end += USR_SZ_MEM_BLOCK;
 	}
-	
-#ifdef DEBUG_0
-	printf("p_end = 0x%x \r\n", p_end);
-#endif
 	
 }
 
@@ -154,21 +143,15 @@ void *k_request_memory_block(void)
 {
 	__disable_irq(); // atomic(on)
 
-#ifdef DEBUG_0 
-	printf("k_request_memory_block: entering...\r\n");
-#endif
 	//While there are no memory blocks left on the heap, block the current process
 	while (empty(heap)) {
 	#ifdef DEBUG_0 
-		printf("process %d blocked \r\n", gp_current_process->m_pid);
+		printf("Process %d blocked \r\n", gp_current_process->m_pid);
 	#endif
 		gp_current_process->m_state = BLOCKED;
 		push(blocked_memory_pq, (QNode *) gp_current_process, gp_current_process->m_priority);
 		k_release_processor();
 	}
-	#ifdef DEBUG_0 
-		printf("k_request_memory_block: returning new block...\r\n");
-	#endif
 	
 	__enable_irq(); // atomic(off)
 	
@@ -193,9 +176,6 @@ int k_release_memory_block(void *p_mem_blk)
 {
 	__disable_irq(); // atomic(on)
 
-#ifdef DEBUG_0 
-	printf("k_release_memory_block: releasing block @ 0x%x\r\n", p_mem_blk);
-#endif
 	//Return an error if the input memory block is not valid
 	if (p_mem_blk == NULL) {
 		__enable_irq();
@@ -211,7 +191,7 @@ int k_release_memory_block(void *p_mem_blk)
 		PCB* proc_to_unblock = (PCB*)pop(blocked_memory_pq);
 		proc_to_unblock->m_state = READY;
 	#ifdef DEBUG_0 
-		printf("unblocking process ID %x\r\n", proc_to_unblock->m_pid);
+		printf("Unblocking process ID %x\r\n", proc_to_unblock->m_pid);
 	#endif
 		push(ready_pq, (QNode*)proc_to_unblock, proc_to_unblock->m_priority);
 		// Only preempt if the current process is not an i-process
