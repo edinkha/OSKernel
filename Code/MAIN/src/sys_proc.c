@@ -49,7 +49,6 @@ int num_reg_commands = 0;    // Number of currently registered commands
  */
 void set_priority_command_proc(void)
 {
-	int sender_id;
 	int pid;
 	int priority;
 	MSG_BUF* msg_received;
@@ -61,7 +60,7 @@ void set_priority_command_proc(void)
 	msg_to_send->mtext[0] = '%';
 	msg_to_send->mtext[1] = 'C';
 	msg_to_send->mtext[2] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 	
 	while(1) {
 		// Initialize pid and priority to error
@@ -69,7 +68,7 @@ void set_priority_command_proc(void)
 		priority = RTX_ERR;
 		
 		// Receive message from KCD
-		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		msg_received = (MSG_BUF*)receive_message(0);
 		
 		if (msg_received->mtype == COMMAND) {
 			// We're looking for a string of the following form: %C {1,...,13} {0,...,3}
@@ -84,10 +83,10 @@ void set_priority_command_proc(void)
 				}
 				// CASE: PID between 10 and 13
 				else if (msg_received->mtext[5] == ' ' 
-							&& msg_received->mtext[3] == '1' 
-							&& msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '3'
-							&& msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3'
-							&& hasWhiteSpaceToEnd(msg_received->mtext, 7)) {
+						 && msg_received->mtext[3] == '1' 
+						 && msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '3'
+						 && msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3'
+						 && hasWhiteSpaceToEnd(msg_received->mtext, 7)) {
 					pid = 10 + ctoi(msg_received->mtext[4]);
 					priority = ctoi(msg_received->mtext[6]);
 				}
@@ -123,7 +122,6 @@ void proc_wall_clock()
 	int minutes;
 	int seconds;
 	int mtype_validator = -1; // Validates messages to determine if the wall clock should run
-	int sender_id;
 	MSG_BUF* msg_received;
 	MSG_BUF* msg_to_send;
 	
@@ -134,7 +132,7 @@ void proc_wall_clock()
 	msg_to_send->mtext[1] = 'W';
 	msg_to_send->mtext[2] = 'R';
 	msg_to_send->mtext[3] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 
 	// Tell the KCD to register the "%WS" command with the wall clock process
 	msg_to_send = (MSG_BUF*)request_memory_block();
@@ -143,7 +141,7 @@ void proc_wall_clock()
 	msg_to_send->mtext[1] = 'W';
 	msg_to_send->mtext[2] = 'S';
 	msg_to_send->mtext[3] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 
 	// Tell the KCD to register the "%WT" command with the wall clock process
 	msg_to_send = (MSG_BUF*)request_memory_block();
@@ -152,11 +150,11 @@ void proc_wall_clock()
 	msg_to_send->mtext[1] = 'W';
 	msg_to_send->mtext[2] = 'T';
 	msg_to_send->mtext[3] = '\0';
-	send_message(PID_KCD, (void*)msg_to_send);
+	send_message(PID_KCD, msg_to_send);
 
 	while (1) {
 		// Receive message from KCD (command input), or self (to display time)
-		msg_received = (MSG_BUF*)receive_message(&sender_id);
+		msg_received = (MSG_BUF*)receive_message(0);
 		
 		if (msg_received->mtype == COMMAND) {
 			/* NOTE:
@@ -387,7 +385,7 @@ void CRT(void)
 			// trigger the UART THRE interrupt bit so that UART i-proc runs
 			pUart->IER ^= IER_THRE;
 		} else {
-			release_memory_block((void*)received_message);
+			release_memory_block(received_message);
 		}
 	}
 }
@@ -464,7 +462,7 @@ void UART_IPROC(void)
 			message_to_send->mtype = USER_INPUT;
 			message_to_send->mtext[0] = g_char_in;
 			message_to_send->mtext[1] = '\0';
-			k_send_message(PID_KCD, (void*)message_to_send);
+			k_send_message(PID_KCD, message_to_send);
 		}
 	}
 	else if (IIR_IntId & IIR_THRE) {
@@ -483,7 +481,7 @@ void UART_IPROC(void)
 		uart1_put_string("Finish writing. Turning off IER_THRE\n\r");
 	#endif // DEBUG_0		
 		//pUart->THR = '\0';
-		k_release_memory_block((void*)received_message);
+		k_release_memory_block(received_message);
 		gp_buffer = g_buffer;		
 	}
 	else {  /* not implemented yet */
@@ -499,10 +497,8 @@ void UART_IPROC(void)
 void proc_a(void)
 {
 	int num = 0;
-	
 	MSG_BUF* msg_received;
 	MSG_BUF* msg_to_send;
-	
 
 	// Tell the KCD to register the "%Z" command
 	msg_to_send = (MSG_BUF*)request_memory_block();
@@ -512,19 +508,16 @@ void proc_a(void)
 	msg_to_send->mtext[2] = '\0';
 	send_message(PID_KCD, msg_to_send);
 	
+	// Wait for the "%Z" command and discard any other messages while waiting
 	while (1) {
 		msg_received = (MSG_BUF*)receive_message(0);
-		
 		if (msg_received->mtype == COMMAND) {
-			if (msg_received->mtext[1] == 'Z') { 
-				release_memory_block(msg_received);
-				break;
-			} else {
-				release_memory_block(msg_received);
-			}
-		
+			release_memory_block(msg_received);
+			break;
 		}
+		release_memory_block(msg_received);
 	}
+	
 	num = 0;
 	while (1) {
 		msg_to_send = (MSG_BUF*)request_memory_block();
@@ -538,10 +531,8 @@ void proc_a(void)
 
 void proc_b (void)
 {
-	MSG_BUF* msg_received;
-	
 	while (1) {
-		msg_received = (MSG_BUF*)receive_message(0);
+		MSG_BUF* msg_received = (MSG_BUF*)receive_message(0);
 		send_message(PID_C, msg_received);
 	}
 }
