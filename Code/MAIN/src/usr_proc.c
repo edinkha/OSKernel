@@ -326,7 +326,7 @@ void memory_tests(void)
 	block_check_2 = 1;
 
 	while (!empty(&all_mem_blocks)) {
-		if (release_memory_block((void*)pop_front(&all_mem_blocks)) == RTX_ERR) {
+		if (release_memory_block(pop_front(&all_mem_blocks)) == RTX_ERR) {
 			tests_passing = 0;
 		}
 	}
