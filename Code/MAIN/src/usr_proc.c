@@ -44,6 +44,8 @@ int set_priority_preempt_check_3 = 0;
 int set_priority_preempt_check_4 = 0;
 int set_priority_preempt_check_5 = 0;
 int priority_tests_done = 0;
+int block_check_1 = 0;
+int block_check_2 = 0;
 int memory_tests_pass = 0;
 int num_tests_failed = 0;
 
@@ -55,6 +57,7 @@ int num_tests_failed = 0;
 void user_test_runner(void)
 {
 	MSG_BUF* message_to_unblock;
+	void* mem_block_to_unblock;
 
 	while (!done_testing) {
 		// Print introductory test strings
@@ -89,7 +92,18 @@ void user_test_runner(void)
 	    message_to_unblock->mtext[1] = '\0';
 	    send_message(PID_P3, message_to_unblock);
 
-	    if (memory_tests_pass) {
+	    // PID_P3 just released processor, so we end up back here
+	    // Request a memory block and release processor
+	    mem_block_to_unblock = request_memory_block();
+	    release_processor();
+
+	    // PID_P3 just got blocked
+	    block_check_1 = 1;
+
+	    // Release memory block so that PID_P3 gets unblocked
+	    release_memory_block(mem_block_to_unblock);
+	    
+	    if (memory_tests_pass && block_check_2) {
 	        uart1_put_string("G023_test: Test 2 OK\r\n");
 	    } else {
 	        uart1_put_string("G023_test: Test 2 FAIL\r\n");
@@ -116,7 +130,7 @@ void user_test_runner(void)
 }
 
 /**
- * @brief: A process that thoroughly tests all parts of get/set priority API methods
+ * @brief: A process that tests the get and set process priority primitives
  */
 void priority_tests(void)
 {
@@ -244,14 +258,17 @@ void priority_tests(void)
 }
 
 /**
- * @brief: a process responsible for setting the wall clock to 10:10:10
+ * @brief: a process responsible for testing the request and release memory block primitives
  */
 void memory_tests(void)
 {
 	MSG_BUF* message_to_unblock;
 	void* mem_block_1;
 	void* mem_block_2;
+	// NOTE: should be set to value of NUM_HEAP_BLOCKS
+	void* all_mem_blocks[9];
 	int tests_passing = 1;
+	int i;
 
 	// Should only get here once priority_tests changes its priority to LOWEST
 	set_priority_preempt_check_1 = 1;
@@ -294,13 +311,33 @@ void memory_tests(void)
 		tests_passing = 0;
 	}
 
+	// For this section, we want the following to happen:
+	// First, release the memory block that we used to get this far
+	release_memory_block(message_to_unblock);
+	// Then, release processor so that PID_P1 can run
+	release_processor();
+	// Then, back in PID_P1, we request a memory block and release processor
+	// We end up back here, and we want to request every memory block available (i.e. block on memory)
+	for (i = 0; i < 9; i++) {
+		all_mem_blocks[i] = request_memory_block();
+	}
+	// We should end up at PID_P1 again, where we release the previously requested memory block
+	// We should now be unblocked, and we should release all of the memory we just requested
+	block_check_2 = 1;
+	if (!block_check_1) {
+		tests_passing = 0;
+	}
+
+	for (i = 0; i < 9; i++) {
+		if (release_memory_block(all_mem_blocks[i]) == RTX_ERR) {
+			tests_passing = 0;
+		}
+	}
+
 	// Send test case result back to PID_P1
     // If 0 -> test case failed
     // If 1 -> test case passed
 	memory_tests_pass = tests_passing;
-
-	// Release the memory block we used to run these tests
-	release_memory_block(message_to_unblock);
 
 	// Request a message to block this process
 	// This avoids running into PID_P2 accidentally / anytime after running the priority tests
