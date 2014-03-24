@@ -10,8 +10,9 @@
 #include <system_LPC17xx.h>
 #include "k_process.h"
 #include "uart_polling.h"
-#include "timer.h"
+#include "i_proc.h"
 #include "sys_proc.h"
+#include "usr_proc.h"
 
 #ifdef DEBUG_0
 #include "printf.h"
@@ -23,7 +24,7 @@ PCB *gp_current_process = NULL; /* always point to the current RUNNING process *
 
 U32 g_switch_flag = 0;          /* whether to continue to run the process before the UART receive interrupt */
                                 /* 1 means to switch to another process, 0 means to continue the current process */
-																/* this value will be set by UART handler */
+								/* this value will be set by UART handler and timer i-processes */
 
 /* process initialization table */
 PROC_INIT g_proc_table[NUM_PROCS];
@@ -68,15 +69,22 @@ void process_init()
 	g_proc_table[1].m_stack_size = USR_SZ_STACK;
 	g_proc_table[1].mpf_start_pc = &proc_wall_clock;
 	
+	// Stress test A initialization
+	// Want to do this first so it gets run first so it can register itself with the KCD
+	g_proc_table[2].m_pid = PID_A;
+	g_proc_table[2].m_priority = HIGH;
+	g_proc_table[2].m_stack_size = USR_SZ_STACK;
+	g_proc_table[2].mpf_start_pc = &proc_a;
+	
 	for (i = 0; i < NUM_TEST_PROCS; i++) {
-		g_proc_table[i+2].m_pid = g_test_procs[i].m_pid;
-		g_proc_table[i+2].m_priority = g_test_procs[i].m_priority;
-		g_proc_table[i+2].m_stack_size = g_test_procs[i].m_stack_size;
-		g_proc_table[i+2].mpf_start_pc = g_test_procs[i].mpf_start_pc;
+		g_proc_table[i+3].m_pid = g_test_procs[i].m_pid;
+		g_proc_table[i+3].m_priority = g_test_procs[i].m_priority;
+		g_proc_table[i+3].m_stack_size = g_test_procs[i].m_stack_size;
+		g_proc_table[i+3].mpf_start_pc = g_test_procs[i].mpf_start_pc;
 	}
-
+	
 	// KCD process initialization
-	i = 8;
+	i = 9;
 	g_proc_table[i].m_pid = PID_KCD;
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
@@ -87,6 +95,18 @@ void process_init()
 	g_proc_table[i].m_priority = HIGH;
 	g_proc_table[i].m_stack_size = USR_SZ_STACK;
 	g_proc_table[i].mpf_start_pc = &CRT;
+	
+	// Stress test B initialization
+	g_proc_table[++i].m_pid = PID_B;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &proc_b;
+	
+	// Stress test C initialization
+	g_proc_table[++i].m_pid = PID_C;
+	g_proc_table[i].m_priority = HIGH;
+	g_proc_table[i].m_stack_size = USR_SZ_STACK;
+	g_proc_table[i].mpf_start_pc = &proc_c;
 	
 	// TIMER i-process initialization
 	g_proc_table[++i].m_pid = PID_TIMER_IPROC;
@@ -160,7 +180,7 @@ PCB* scheduler(void)
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
-		return gp_pcbs[0];
+		return gp_pcbs[15];
 	}
 	else {
 		return next_pcb;
@@ -344,6 +364,7 @@ int k_set_process_priority(int pid, int priority)
 				return RTX_ERR;
 			}
 			push(ready_pq, (QNode*)pcb, priority);
+		default:
 			pcb->m_priority = priority;
 			k_release_processor();
 			__disable_irq();
@@ -354,8 +375,19 @@ int k_set_process_priority(int pid, int priority)
 	return RTX_OK;
 }
 
+
+void* k_message_to_envelope(MSG_BUF* message)
+{
+	return (U8*)message - SZ_MEM_BLOCK_HEADER;
+}
+
+void* k_envelope_to_message(MSG_ENVELOPE* envelope)
+{
+	return (U8*)envelope + SZ_MEM_BLOCK_HEADER;
+}
+
 /**
- * @brief: Sends message_envelope to process_id (i.e. add the message defined at message_envelope to process_id's message queue
+ * @brief: Sends message to process with ID process_id (i.e. add the message defined at message_envelope to process_id's message queue
  * @return: RTX_OK upon success
  *          RTX_ERR upon failure
  */
@@ -365,15 +397,25 @@ int k_send_message(int process_id, void *message){
 	
 	__disable_irq(); // atomic(on)
 	
-	// error checking
-	if (message == NULL || process_id < 0) {
-		return RTX_ERR;
+	/* If the message is coming from the timer i-process, the message is actually of
+	 * the type MSG_ENVELOPE (instead of MSG_BUF like other processes will pass in).
+	 * Also, since the timer is just for forwarding messages, the sender and
+	 * destination PIDs should not be modified.
+	 */
+	if (gp_current_process->m_pid == PID_TIMER_IPROC) {
+		envelope = (MSG_ENVELOPE*)message;
 	}
-	
-	// set sender and receiver proc_ids in the message_envelope memblock
-	envelope = (MSG_ENVELOPE *)((U8*)message - SZ_MEM_BLOCK_HEADER);
-	envelope->sender_pid = gp_current_process->m_pid;
-	envelope->destination_pid = process_id;
+	else {
+		// error checking
+		if (message == NULL || process_id < 0) {
+			return RTX_ERR;
+		}
+		
+		// set sender and receiver proc_ids in the message_envelope memblock
+		envelope = (MSG_ENVELOPE *)k_message_to_envelope(message);
+		envelope->sender_pid = gp_current_process->m_pid;
+		envelope->destination_pid = process_id;
+	}
 	
 	receiving_proc = get_proc_by_pid(process_id);
 
@@ -394,9 +436,12 @@ int k_send_message(int process_id, void *message){
 		}
 		push(ready_pq, (QNode*)receiving_proc, receiving_proc->m_priority);
 		receiving_proc->m_state = READY;
-		// Only preempt if the current process is not an i-process
-		if (!gp_current_process->m_is_iproc) {
-			k_release_processor();
+		
+		if (gp_current_process->m_is_iproc) {
+			g_switch_flag = 1; // Tell the i-process irq handler to release the processor when it it finished
+		}
+		else {
+			k_release_processor(); // Handle preemption
 		}
 	}
 
@@ -433,8 +478,8 @@ void *k_receive_message(int* sender_id)
 		*sender_id = envelope->sender_pid;
 	}
 
-	message = (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
-	
+	message = k_envelope_to_message(envelope);
+		
 	__enable_irq(); // atomic(off)
 	
 	return message;
@@ -462,7 +507,7 @@ void* ki_receive_message(int* sender_id)
 	}
 
 	// Return pointer to the msgbuf in the envelope
-	return (void*)((U8*)envelope + SZ_MEM_BLOCK_HEADER);
+	return k_envelope_to_message(envelope);
 }
 
 int k_delayed_send(int process_id, void* message, int delay)
@@ -478,7 +523,7 @@ int k_delayed_send(int process_id, void* message, int delay)
 	}
 	
 	// Get the pointer to the envelope from the message and set the envelope's data
-	envelope = (MSG_ENVELOPE*)((U8*)message - SZ_MEM_BLOCK_HEADER);
+	envelope = (MSG_ENVELOPE*)k_message_to_envelope(message);
 	envelope->sender_pid = gp_current_process->m_pid;
 	envelope->destination_pid = process_id;
 	envelope->send_time = get_current_time() + delay;

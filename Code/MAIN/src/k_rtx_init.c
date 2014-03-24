@@ -8,7 +8,7 @@
 #include "k_rtx_init.h"
 #include "uart.h"
 #include "uart_polling.h"
-#include "timer.h"
+#include "i_proc.h"
 #include "k_memory.h"
 #include "k_process.h"
 

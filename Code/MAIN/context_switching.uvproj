@@ -117,7 +117,7 @@
             <Oh166RecLen>16</Oh166RecLen>
           </OPTHX>
           <Simulator>
-            <UseSimulator>1</UseSimulator>
+            <UseSimulator>0</UseSimulator>
             <LoadApplicationAtStartup>1</LoadApplicationAtStartup>
             <RunToMain>1</RunToMain>
             <RestoreBreakpoints>1</RestoreBreakpoints>
@@ -128,7 +128,7 @@
             <LimitSpeedToRealTime>0</LimitSpeedToRealTime>
           </Simulator>
           <Target>
-            <UseTarget>0</UseTarget>
+            <UseTarget>1</UseTarget>
             <LoadApplicationAtStartup>1</LoadApplicationAtStartup>
             <RunToMain>0</RunToMain>
             <RestoreBreakpoints>1</RestoreBreakpoints>
@@ -139,7 +139,7 @@
             <RestoreTracepoints>0</RestoreTracepoints>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
-          <TargetSelection>0</TargetSelection>
+          <TargetSelection>1</TargetSelection>
           <SimDlls>
             <CpuDll></CpuDll>
             <CpuDllArguments></CpuDllArguments>
@@ -348,7 +348,7 @@
             <uSurpInc>0</uSurpInc>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>DEBUG_0, DEBUG_1, DEBUG_HK</Define>
+              <Define>DEBUG_0, DEBUG_1, DEBUG_HK, DEBUG_CUSTOM_HEAP</Define>
               <Undefine></Undefine>
               <IncludePath></IncludePath>
             </VariousControls>
@@ -422,19 +422,14 @@
               <FilePath>.\src\main_svc.c</FilePath>
             </File>
             <File>
-              <FileName>timer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\timer.c</FilePath>
-            </File>
-            <File>
-              <FileName>uart_irq.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\uart_irq.c</FilePath>
-            </File>
-            <File>
               <FileName>sys_proc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sys_proc.c</FilePath>
+            </File>
+            <File>
+              <FileName>i_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\i_proc.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -470,6 +465,11 @@
               <FileName>usr_proc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\usr_proc.c</FilePath>
+            </File>
+            <File>
+              <FileName>test_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\test_proc.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -532,11 +532,6 @@
               <FilePath>.\src\priority_queue.h</FilePath>
             </File>
             <File>
-              <FileName>timer.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\src\timer.h</FilePath>
-            </File>
-            <File>
               <FileName>uart.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\src\uart.h</FilePath>
@@ -555,6 +550,16 @@
               <FileName>utils.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\src\utils.h</FilePath>
+            </File>
+            <File>
+              <FileName>i_proc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\i_proc.h</FilePath>
+            </File>
+            <File>
+              <FileName>test_proc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\test_proc.h</FilePath>
             </File>
           </Files>
         </Group>

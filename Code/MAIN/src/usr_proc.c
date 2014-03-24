@@ -1,417 +1,307 @@
 /**
- * @file:   usr_proc.c
- * @brief:  Six user processes: proc1...6 to do simple processor managment testing
- * @author: Evet DInkha
- * @date:   2014/03/15
- * NOTE: Each process is in an infinite loop. Processes never terminate.
- *
- * Test cases:
- starting priorities:
-{proc1, ..., proc6} = {HIGH, MEDIUM, MEDIUM, LOWEST, LOWEST, LOW}
-
-proc1 is HIGH priority => immediately blocks on receive message
-proc2 is MEDIUM priority => sends !, @, # hotkeys
-	=> expect on Ready PQ: proc3, proc4, proc5, proc6, wallclock
-	=> expect on Blocked on Mem PQ: none
-	=> expect on Blocked on Receive PQ: UART iProc, Timer iProc, proc1
-	=> set proc4 priority to HIGH
-proc4 is now HIGH priority => sets wall clock to 234:123:12 (i.e. incorrect time)
-	=> expect error message
-	=> sends incorrect KCD_REG to KCD
-	=> expect error message
-	=> sets wall clock to 23:59:55
-	=> expect wall clock to be set correctly
-	=> 
-  => sets priority to LOWEST
-proc3 is MEDIUM priority => sends delayed message to proc5
+ * @brief: usr_proc.c
  */
 
-#include "rtx.h"
-#include "uart_polling.h"
+#include "k_rtx.h"
 #include "usr_proc.h"
-#include "utils.h"
+#include "i_proc.h"
 #include "string.h"
+#include "utils.h"
 
-#ifdef DEBUG_0
-#include "printf.h"
-#endif /* DEBUG_0 */
-
-/* initialization table item */
-PROC_INIT g_test_procs[NUM_TEST_PROCS];
-
-
-
-void set_test_procs() {
-	int i;
-	for( i = 0; i < NUM_TEST_PROCS; i++ ) {
-		g_test_procs[i].m_pid=(U32)(i+1);
-		g_test_procs[i].m_stack_size=0x100;
-	}
-  
-	g_test_procs[0].mpf_start_pc = &proc1;
-	g_test_procs[0].m_priority   = LOW;
-
-	g_test_procs[1].mpf_start_pc = &proc2;
-	g_test_procs[1].m_priority   = MEDIUM;
-
-	g_test_procs[2].mpf_start_pc = &proc3;
-	g_test_procs[2].m_priority   = LOW;
-
-	g_test_procs[3].mpf_start_pc = &proc4;
-	g_test_procs[3].m_priority   = LOW;
-
-	g_test_procs[4].mpf_start_pc = &proc5;
-	g_test_procs[4].m_priority   = LOW;
-
-	g_test_procs[5].mpf_start_pc = &proc6;
-	g_test_procs[5].m_priority   = LOW;
-
-}
-int results_printed = 0,
-	  block1_sent_message = RTX_ERR,
-	  block1_set_priority= RTX_ERR,
-	  block1_set_priority2= RTX_ERR,
-
-		block2_sent_message = RTX_ERR,
-	  block2_set_priority= RTX_ERR,
-
-		block3_sent_message = RTX_ERR,
-		block3_set_priority= RTX_ERR,
-
-		block4_sent_message = RTX_ERR,
-
-		block5_sent_message = RTX_ERR,
-
-		block6_sent_message = RTX_ERR,
-
-		wall_clock_set = RTX_ERR,
-		wall_clock_reset = RTX_ERR,
-		wall_clock_terminate = RTX_ERR,
-		hot_key1_value = RTX_ERR,
-		hot_key2_value = RTX_ERR,
-		hot_key3_value = RTX_ERR,
-		num_tests_passed = 0,
-		num_tests_failed = 0;
 
 /**
- * @brief: a process that sends the messages it receives
+ * @brief The Set Priority Command Process.
+ * Allows user to set process priority using messages rather than the user API.
  */
-void proc1(void)
+void set_priority_command_proc(void)
 {
-	int i = 0;
-	int ret_val = 20;
-	int sender_id;
+	int pid;
+	int priority;
 	MSG_BUF* msg_received;
-	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
-
-	ret_val = set_process_priority(PID_P3, LOW);
+	MSG_BUF* msg_to_send;
+	
+	// Tell the KCD to register the "%C" command with the set priority command process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'C';
+	msg_to_send->mtext[2] = '\0';
+	send_message(PID_KCD, msg_to_send);
 	
 	while (1) {
-		msg_received = (MSG_BUF*)receive_message(&sender_id);
-		if (sender_id == PID_KCD && msg_received->mtext[2] == 'S') {	
-				msg_to_send->mtype = CRT_DISPLAY;
-				strcpy(msg_to_send->mtext, msg_received->mtext);
-
-				block1_sent_message = send_message(PID_CRT, (void*)msg_to_send);
-				block1_set_priority = set_process_priority(PID_P3, LOW);
-				block1_set_priority2= set_process_priority(PID_P4, HIGH);
-		} else if (sender_id == PID_KCD && msg_received->mtext[2] == 'R') {
-				msg_to_send->mtype = CRT_DISPLAY;
-				strcpy(msg_to_send->mtext, msg_received->mtext);
-
-				ret_val = send_message(PID_CRT, (void*)msg_to_send);
-				ret_val = set_process_priority(PID_P5, HIGH);
-		}	else if (sender_id == PID_KCD && msg_received->mtext[2] == 'T') {
-				msg_to_send->mtype = CRT_DISPLAY;
-				strcpy(msg_to_send->mtext, msg_received->mtext);
-
-				ret_val = send_message(PID_CRT, (void*)msg_to_send);
-				ret_val = set_process_priority(PID_P6, HIGH);
-		}	else if(sender_id == PID_KCD && msg_received->mtext[2] == '!') {
-				msg_to_send->mtype = CRT_DISPLAY;
-				strcpy(msg_to_send->mtext, msg_received->mtext);
-
-				ret_val = send_message(PID_CRT, (void*)msg_to_send);
-		}	else if(sender_id == PID_KCD && msg_received->mtext[2] == '@') {
-				msg_to_send->mtype = CRT_DISPLAY;
-				strcpy(msg_to_send->mtext, msg_received->mtext);
-
-				ret_val = send_message(PID_CRT, (void*)msg_to_send);
-		}	else if(sender_id == PID_KCD && msg_received->mtext[2] == '#') {
-
-				msg_to_send->mtype = CRT_DISPLAY;
-				strcpy(msg_to_send->mtext, msg_received->mtext);
-
-				ret_val = send_message(PID_CRT, (void*)msg_to_send);
-				break;
-		}
-
-			#ifdef DEBUG_0
-				printf("proc1: ret_val=%d\n", ret_val);
-			#endif /* DEBUG_0 */
-			uart1_put_char('0' + i%10);
-			i++;
-
-			#ifdef DEBUG_1
-			if (!results_printed) {
-				wall_clock_set = block1_sent_message && block1_set_priority && block1_set_priority2;
-				wall_clock_reset = block2_sent_message && block2_set_priority;
-				wall_clock_terminate = block3_sent_message && block3_set_priority;
-				hot_key1_value = block4_sent_message;
-				hot_key2_value = block5_sent_message;
-				hot_key3_value = block6_sent_message;
-				
-				if (wall_clock_set != RTX_OK) {
-					printf("G023_test: test 1 OK\r\n");
-					num_tests_passed++;
-				} else {
-					printf("G023_test: test 1 FAIL\r\n");
-					num_tests_failed++;
+		// Initialize pid and priority to error
+		pid = RTX_ERR;
+		priority = RTX_ERR;
+		
+		// Receive message from KCD
+		msg_received = (MSG_BUF*)receive_message(0);
+		
+		if (msg_received->mtype == COMMAND) {
+			// We're looking for a string of the following form: %C {1,...,13} {0,...,3}
+			if (msg_received->mtext[2] == ' ') {
+				// CASE: PID between 1 and 9
+				if (msg_received->mtext[4] == ' '
+				        && msg_received->mtext[3] >= '1' && msg_received->mtext[3] <= '9'
+				        && msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
+				        && hasWhiteSpaceToEnd(msg_received->mtext, 6)) {
+					pid = ctoi(msg_received->mtext[3]);
+					priority = ctoi(msg_received->mtext[5]);
 				}
-				
-				if (wall_clock_reset != RTX_OK) {
-					printf("G023_test: test 2 OK\r\n");
-					num_tests_passed++;
-				} else {
-					printf("G023_test: test 2 FAIL\r\n");
-					num_tests_failed++;
+				// CASE: PID between 10 and 13
+				else if (msg_received->mtext[5] == ' '
+				         && msg_received->mtext[3] == '1'
+				         && msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '3'
+				         && msg_received->mtext[6] >= '0' && msg_received->mtext[6] <= '3'
+				         && hasWhiteSpaceToEnd(msg_received->mtext, 7)) {
+					pid = 10 + ctoi(msg_received->mtext[4]);
+					priority = ctoi(msg_received->mtext[6]);
 				}
-				
-				if (wall_clock_terminate != RTX_OK) {
-					printf("G023_test: test 3 OK\r\n");
-					num_tests_passed++;
-				} else {
-					printf("G023_test: test 3 FAIL\r\n");
-					num_tests_failed++;
-				}
-				
-				if (hot_key1_value != RTX_OK) {
-					printf("G023_test: test 4 OK\r\n");
-					num_tests_passed++;
-				} else {
-					printf("G023_test: test 4 FAIL\r\n");
-					num_tests_failed++;
-				}
-				
-				if (hot_key2_value != RTX_OK) {
-					printf("G023_test: test 5 OK\r\n");
-					num_tests_passed++;
-				} else {
-					printf("G023_test: test 5 FAIL\r\n");
-					num_tests_failed++;
-				}
-
-				if (hot_key3_value != RTX_OK) {
-					printf("G023_test: test 6 OK\r\n");
-					num_tests_passed++;
-				} else {
-					printf("G023_test: test 6 FAIL\r\n");
-					num_tests_failed++;
-				}
-				
-				printf("G023_test: 6/6 tests OK\r\n", num_tests_passed);
-				printf("G023_test: 0/6 tests FAIL\r\n", num_tests_failed);
-
-				printf("G023_test: END\r\n");
-				
-				results_printed = 1;
 			}
-		#endif  /* DEBUG_1 */
-
-		uart1_put_string("proc1 end of testing\n\r");
-		while (1) {
-			release_processor();
 		}
+		
+		if (pid != RTX_ERR && priority != RTX_ERR) {
+			set_process_priority(pid, priority);
+		}
+		else {
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = CRT_DISPLAY;
+			strcpy(msg_to_send->mtext, "ERROR: Invalid input!\r\n");
+			send_message(PID_CRT, msg_to_send);
+		}
+		
+		release_memory_block(msg_received);
 	}
 }
 
 /**
- * @brief: a process that prints 4x5 numbers and changes the priority of p3
+ * @brief The Wall Clock process.
+ *
+ * The first time the wall clock is run, it registers itself with the KCD, then goes into
+ * the eternal loop where it gets blocked waiting for a message. Each time the wall clock
+ * gets a new message, it performs the necessary actions and if it is in a "running" state,
+ * it sends a message to the CRT to display the current time. Finally, the wall clock releases
+ * the memory block of the message it received.
  */
-void proc2(void)
+void proc_wall_clock()
 {
-	int i = 0;
-	int ret_val = 20;
-	int counter = 0;
-
-	while (1) {
-		if (i != 0 && i%5 == 0) {
-			uart1_put_string("\n\r");
-			counter++;
-			if (counter == 1) {
-				ret_val = set_process_priority(PID_P3, HIGH);
-				break;
-			} else {
-				ret_val = release_processor();
-			}
-		#ifdef DEBUG_0
-			printf("proc2: ret_val=%d\n", ret_val);
-		#endif /* DEBUG_0 */
-		}
-		uart1_put_char('0' + i%10);
-		i++;
-	}
-	uart1_put_string("proc2 end of testing\n\r");
-	while (1) {
-		release_processor();
-	}
-}
-
-/**
- * @brief: a process responsible for setting the wall clock to 10:10:10
- */
-void proc3(void)
-{
-	int ret_val = 100;
-
-	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
-	msg_to_send->mtype = PID_KCD;
+	int hours;
+	int minutes;
+	int seconds;
+	int mtype_validator = -1; // Validates messages to determine if the wall clock should run
+	MSG_BUF* msg_received;
+	MSG_BUF* msg_to_send;
+	
+	// Tell the KCD to register the "%WR" command with the wall clock process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
+	msg_to_send->mtext[0] = '%';
+	msg_to_send->mtext[1] = 'W';
+	msg_to_send->mtext[2] = 'R';
+	msg_to_send->mtext[3] = '\0';
+	send_message(PID_KCD, msg_to_send);
+	
+	// Tell the KCD to register the "%WS" command with the wall clock process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
 	msg_to_send->mtext[0] = '%';
 	msg_to_send->mtext[1] = 'W';
 	msg_to_send->mtext[2] = 'S';
-	msg_to_send->mtext[3] = ' ';
-	msg_to_send->mtext[4] = '1';
-	msg_to_send->mtext[5] = '0';
-	msg_to_send->mtext[6] = ':';
-	msg_to_send->mtext[7] = '1';
-	msg_to_send->mtext[8] = '0';
-	msg_to_send->mtext[9] = ':';
-	msg_to_send->mtext[10] = '1';
-	msg_to_send->mtext[11] = '0';
-
-	uart1_put_string("%WS 10:10:10\r\n");
+	msg_to_send->mtext[3] = '\0';
+	send_message(PID_KCD, msg_to_send);
 	
-	ret_val = send_message(PID_P1, (void*) msg_to_send);
-	ret_val = set_process_priority(PID_P1, HIGH);
-
-	#ifdef DEBUG_0
-			printf("proc3: ret_val = %d \n", ret_val);
-	#endif /* DEBUG_0 */
-
-	uart1_put_string("proc3 end of testing\n\r");
-	
-	while ( 1 ) {
-		release_processor();
-	}
-}
-
-/**
- * @brief: a process responsible for resetting the Wall Clock
- */
-void proc4(void)
-{
-	int i = 0;
-	int counter = 0;
-	int ret_val = 100;
-
-	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
-	msg_to_send->mtype = PID_KCD;
+	// Tell the KCD to register the "%WT" command with the wall clock process
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
 	msg_to_send->mtext[0] = '%';
 	msg_to_send->mtext[1] = 'W';
-	msg_to_send->mtext[1] = 'R';
-
+	msg_to_send->mtext[2] = 'T';
+	msg_to_send->mtext[3] = '\0';
+	send_message(PID_KCD, msg_to_send);
+	
 	while (1) {
-
-		if (i != 0 && i%5 == 0) {
-			counter++;
-			if (counter == 2) {
-				ret_val = send_message(PID_P1, (void*) msg_to_send);
-				break;
-			} else {
-				ret_val = release_processor();
+		// Receive message from KCD (command input), or self (to display time)
+		msg_received = (MSG_BUF*)receive_message(0);
+		
+		if (msg_received->mtype == COMMAND) {
+			/* NOTE:
+			 * Changing the message type validator invalidates previous delay-sent messages
+			 * so only new messages are used to run the clock.
+			 */
+			
+			if (msg_received->mtext[2] == 'R') { // Reset and run clock
+				// Reset the time
+				hours = minutes = seconds = 0;
+				
+				mtype_validator = get_current_time(); // Change the message type validator
+				// If the message type validator happens to have been set to the COMMAND type, change it
+				if (mtype_validator == COMMAND) {
+					++mtype_validator;
+				}
+				msg_received->mtype = mtype_validator; // Set the message's type to the validator so the clock will run
 			}
-
-			#ifdef DEBUG_0
-				printf("proc4: ret_val = %d \n", ret_val);
-			#endif /* DEBUG_0 */
+			else if (msg_received->mtext[2] == 'S') { // Set clock running starting at a specified time
+				if (msg_received->mtext[3] == ' '
+				        && msg_received->mtext[4] >= '0' && msg_received->mtext[4] <= '2'
+				        && msg_received->mtext[5] >= '0' && msg_received->mtext[5] <= '3'
+				        && msg_received->mtext[6] == ':'
+				        && msg_received->mtext[7] >= '0' && msg_received->mtext[7] <= '5'
+				        && msg_received->mtext[8] >= '0' && msg_received->mtext[8] <= '9'
+				        && msg_received->mtext[9] == ':'
+				        && msg_received->mtext[10] >= '0' && msg_received->mtext[10] <= '5'
+				        && msg_received->mtext[11] >= '0' && msg_received->mtext[11] <= '9'
+				        && hasWhiteSpaceToEnd(msg_received->mtext, 12)) {
+					// Use the input time to set the current time variables and set the message's type to the validator so the clock will run
+					hours = ctoi(msg_received->mtext[4]) * 10 + ctoi(msg_received->mtext[5]);
+					minutes = ctoi(msg_received->mtext[7]) * 10 + ctoi(msg_received->mtext[8]);
+					seconds = ctoi(msg_received->mtext[10]) * 10 + ctoi(msg_received->mtext[11]);
+					
+					mtype_validator = get_current_time(); // Change the message type validator
+					// If the message type validator happens to have been set to the COMMAND type, change it
+					if (mtype_validator == COMMAND) {
+						++mtype_validator;
+					}
+					msg_received->mtype = mtype_validator; // Set the message's type to the validator so the clock will run
+				}
+				else { // Input was invalid
+					// Send a message to the CRT to display an error message
+					msg_to_send = (MSG_BUF*)request_memory_block();
+					msg_to_send->mtype = CRT_DISPLAY;
+					strcpy(msg_to_send->mtext, "ERROR: Invalid time!\r\n");
+					send_message(PID_CRT, msg_to_send);
+				}
+			}
+			else if (msg_received->mtext[2] == 'T') { // Stop clock
+				mtype_validator = get_current_time(); // Change the message type validator so the clock will stop running
+				// If the message type validator happens to have been set to the COMMAND type, change it
+				if (mtype_validator == COMMAND) {
+					++mtype_validator;
+				}
+			}
 		}
 		
-		i++;
-	}
-	
-	uart1_put_string("proc4 end of testing\n\r");
-	
-	while (1) {
-		release_processor();
+		if (msg_received->mtype == mtype_validator) {
+			// Send a message to the CRT to display the current time
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = CRT_DISPLAY;
+			
+			msg_to_send->mtext[0] = itoc(hours / 10);
+			msg_to_send->mtext[1] = itoc(hours % 10);
+			msg_to_send->mtext[2] = ':';
+			msg_to_send->mtext[3] = itoc(minutes / 10);
+			msg_to_send->mtext[4] = itoc(minutes % 10);
+			msg_to_send->mtext[5] = ':';
+			msg_to_send->mtext[6] = itoc(seconds / 10);
+			msg_to_send->mtext[7] = itoc(seconds % 10);
+			msg_to_send->mtext[8] = '\r';
+			msg_to_send->mtext[9] = '\n';
+			msg_to_send->mtext[10] = '\0';
+			
+			send_message(PID_CRT, (void*)msg_to_send);
+			
+			// Set the time for when the wall clock is run again (which should be in exactly 1 second)
+			if (++seconds >= 60) {
+				seconds = 0;
+				if (++minutes >= 60) {
+					minutes = 0;
+					if (++hours >= 24) {
+						hours = 0;
+					}
+				}
+			}
+			
+			// Send a message to self in exactly 1 second to update and display the time
+			msg_to_send = (MSG_BUF*)request_memory_block();
+			msg_to_send->mtype = mtype_validator;
+			delayed_send(PID_CLOCK, msg_to_send, 1000);
+		}
+		
+		// Release the memory of the received message
+		release_memory_block(msg_received);
 	}
 }
 
-/**
- * @brief: a process responsible for stopping the Wall Clock
- */
-void proc5(void)
+void proc_a(void)
 {
-	int i = 0;
-	int counter = 0;
-	int ret_val = 100;
-
-	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
-	msg_to_send->mtype = PID_KCD;
+	int num = 0;
+	MSG_BUF* msg_received;
+	MSG_BUF* msg_to_send;
+	
+	// Tell the KCD to register the "%Z" command
+	msg_to_send = (MSG_BUF*)request_memory_block();
+	msg_to_send->mtype = KCD_REG;
 	msg_to_send->mtext[0] = '%';
-	msg_to_send->mtext[1] = 'W';
-	msg_to_send->mtext[1] = 'T';
-
+	msg_to_send->mtext[1] = 'Z';
+	msg_to_send->mtext[2] = '\0';
+	send_message(PID_KCD, msg_to_send);
+	
+	// Wait for the "%Z" command and discard any other messages while waiting
 	while (1) {
-		if (i != 0 && i%10 == 0) {
-			counter++;
-			if (counter == 5) {
-				ret_val = send_message(PID_P1, (void*) msg_to_send);
-				break;
-			} else {
-				ret_val = release_processor();
-			}
-
-			#ifdef DEBUG_0
-				printf("proc5: ret_val = %d \n", ret_val);
-			#endif /* DEBUG_0 */
+		msg_received = (MSG_BUF*)receive_message(0);
+		if (msg_received->mtype == COMMAND) {
+			release_memory_block(msg_received);
+			break;
 		}
-		i++;
+		release_memory_block(msg_received);
 	}
 	
-	uart1_put_string("proc5 end of testing\n\r");
-	
-	while ( 1 ) {
+	num = 0;
+	while (1) {
+		msg_to_send = (MSG_BUF*)request_memory_block();
+		msg_to_send->mtype = COUNT_REPORT;
+		itoa(num, msg_to_send->mtext);
+		send_message(PID_B, msg_to_send);
+		num++;
 		release_processor();
 	}
 }
 
-/**
- * @brief: a process responsible for the three hot keys
- */
-void proc6(void)
+void proc_b (void)
 {
-	int i = 0;
-	int counter = 0;
-	int ret_val = 10;
-
-	MSG_BUF* msg_to_send = (MSG_BUF*)request_memory_block();
-	msg_to_send->mtype = CRT_DISPLAY;
-
 	while (1) {
-		if (i != 0 && i%5== 0) {
-			counter++;
-			if (counter == 1) {
-				msg_to_send->mtext[0] = '!';
-				ret_val = send_message(PID_P1, (void*) msg_to_send);
-			} else if (counter == 2) {
-				msg_to_send->mtext[0] = '@';
-				ret_val = send_message(PID_P1, (void*) msg_to_send);
-			}	else if (counter == 2) {
-				msg_to_send->mtext[0] = '#';
-				ret_val = send_message (PID_P1, (void*) msg_to_send);
-				break;
-			}
-
-			#ifdef DEBUG_0
-				printf("proc6: ret_val = %d \n", ret_val);
-			#endif /* DEBUG_0 */
-		}
-		i++;
+		MSG_BUF* msg_received = (MSG_BUF*)receive_message(0);
+		send_message(PID_C, msg_received);
 	}
+}
+
+void proc_c (void)
+{
+	MSG_BUF* msg_to_send;
+	MSG_BUF* msg_received;
+	Queue local_message_q;
 	
-	uart1_put_string("proc6 end of testing\n\r");
+	init_q(&local_message_q);
 	
-	while ( 1 ) {
+	while (1) {
+		if (q_empty(&local_message_q)) {
+			msg_received = (MSG_BUF*)receive_message(0);
+		}
+		else {
+			msg_received = (MSG_BUF*)envelope_to_message((MSG_ENVELOPE*)dequeue(&local_message_q));
+		}
+		
+		if (msg_received->mtype == COUNT_REPORT) {
+			int length = strlen(msg_received->mtext);
+			if (length > 1 && msg_received->mtext[length - 2] % 2 == 0 && msg_received->mtext[length - 1] == '0') {
+				msg_received->mtype = CRT_DISPLAY;
+				strcpy(msg_received->mtext, "Process C\r\n");
+				send_message(PID_CRT, msg_received);
+				
+				//hibernate
+				msg_to_send = (MSG_BUF*)request_memory_block();
+				msg_to_send->mtype = WAKEUP10;
+				delayed_send(PID_C, msg_to_send, 10000);
+				while (1) {
+					msg_received = (MSG_BUF*)receive_message(0);
+					if (msg_received->mtype == WAKEUP10) {
+						break;
+					}
+					else {
+						enqueue(&local_message_q, (QNode*)message_to_envelope(msg_received));
+					}
+				}
+			}
+		}
+		release_memory_block(msg_received);
 		release_processor();
 	}
 }
