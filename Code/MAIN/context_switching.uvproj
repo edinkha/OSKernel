@@ -136,6 +136,7 @@
             <RestoreMemoryDisplay>1</RestoreMemoryDisplay>
             <RestoreFunctions>0</RestoreFunctions>
             <RestoreToolbox>1</RestoreToolbox>
+            <RestoreTracepoints>0</RestoreTracepoints>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
           <TargetSelection>0</TargetSelection>
@@ -421,19 +422,14 @@
               <FilePath>.\src\main_svc.c</FilePath>
             </File>
             <File>
-              <FileName>timer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\timer.c</FilePath>
-            </File>
-            <File>
-              <FileName>uart_irq.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\uart_irq.c</FilePath>
-            </File>
-            <File>
               <FileName>sys_proc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sys_proc.c</FilePath>
+            </File>
+            <File>
+              <FileName>i_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\i_proc.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -469,6 +465,11 @@
               <FileName>usr_proc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\usr_proc.c</FilePath>
+            </File>
+            <File>
+              <FileName>test_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\test_proc.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -531,11 +532,6 @@
               <FilePath>.\src\priority_queue.h</FilePath>
             </File>
             <File>
-              <FileName>timer.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\src\timer.h</FilePath>
-            </File>
-            <File>
               <FileName>uart.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\src\uart.h</FilePath>
@@ -554,6 +550,16 @@
               <FileName>utils.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\src\utils.h</FilePath>
+            </File>
+            <File>
+              <FileName>i_proc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\i_proc.h</FilePath>
+            </File>
+            <File>
+              <FileName>test_proc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\src\test_proc.h</FilePath>
             </File>
           </Files>
         </Group>

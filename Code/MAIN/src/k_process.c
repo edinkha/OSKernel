@@ -10,8 +10,9 @@
 #include <system_LPC17xx.h>
 #include "k_process.h"
 #include "uart_polling.h"
-#include "timer.h"
+#include "i_proc.h"
 #include "sys_proc.h"
+#include "usr_proc.h"
 
 #ifdef DEBUG_0
 #include "printf.h"
