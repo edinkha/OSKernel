@@ -58,6 +58,9 @@ int send_check_1 = 0;
 int general_messaging_tests_pass = 0;
 int delayed_send_check_1 = 0;
 int delayed_messaging_tests_pass = 0;
+int priority_command_tests_pass = 0;
+int priority_command_tests_done = 0;
+int priority_command_check_1 = 0;
 int num_tests_failed = 0;
 
 /**
@@ -71,6 +74,7 @@ void user_test_runner(void)
 	void* mem_block_to_unblock;
 	MSG_BUF* message_from_PID4;
 	MSG_BUF* message_from_PID5;
+	MSG_BUF* message_from_PID6;
 	int sender_id;
 
 	while (!done_testing) {
@@ -177,6 +181,20 @@ void user_test_runner(void)
 	    message_to_unblock->mtext[0] = 'U';
 	    message_to_unblock->mtext[1] = '\0';
 	    send_message(PID_P6, message_to_unblock);
+
+	    // It's possible that we end up here before we're done in PID_P6
+	    // So just block until we're done with PID_P6
+	    message_from_PID6 = (MSG_BUF*)receive_message(&sender_id);
+	    if (sender_id == PID_P6 && release_memory_block(message_from_PID6) != RTX_ERR) {
+			priority_command_check_1 = 1;
+	    }
+
+	    if (priority_command_tests_pass) {
+	        uart1_put_string("G023_test: Test 5 OK\r\n");
+	    } else {
+	        uart1_put_string("G023_test: Test 5 FAIL\r\n");
+	        num_tests_failed++;
+	    }
 
 	    // Print the total number of tests that passed
 	    uart1_put_string("G023_test: ");
@@ -552,7 +570,8 @@ void delayed_messaging_tests(void)
 void set_priority_command_tests(void)
 {
 	MSG_BUF* message_to_unblock;
-
+	MSG_BUF* message_to_send;
+	int tests_passing = 1;
 
 	// Should only get here once priority_tests changes its priority to LOWEST
 	set_priority_preempt_check_4 = 1;
@@ -560,4 +579,74 @@ void set_priority_command_tests(void)
 	// Block process by receiving message so that next proc (LOWEST PRIORITY) can run
 	// Note: We don't care about who sent the message, but in this case, it should be user_test_runner
 	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+	// We can safely release the memory block used to get this far
+	release_memory_block(message_to_unblock);
+	
+	// Send %C 0 0 to KCD
+	// Expected: Error, can't change null process priority
+	// Priority of null proc should still be 4
+	message_to_send = (MSG_BUF*)request_memory_block();
+	message_to_send->mtype = DEFAULT;
+	strcpy(message_to_send->mtext, "%C 0 0");
+	send_message(PID_KCD, message_to_send);
+
+	if (get_process_priority(PID_NULL) != 4) {
+		tests_passing = 0;
+	}
+
+	// Send %C 14 2 to KCD
+	// Expected: Error, can't change iprocess priority
+	// Priority of iproc should still be 0
+	message_to_send = (MSG_BUF*)request_memory_block();
+	message_to_send->mtype = DEFAULT;
+	strcpy(message_to_send->mtext, "%C 14 2");
+	send_message(PID_KCD, message_to_send);
+
+	if (get_process_priority(PID_TIMER_IPROC) != HIGH) {
+		tests_passing = 0;
+	}
+
+	// Send %C 6 2 to KCD
+	// Expected: Priority of PID_P6 should now be LOW
+	message_to_send = (MSG_BUF*)request_memory_block();
+	message_to_send->mtype = DEFAULT;
+	strcpy(message_to_send->mtext, "%C 6 2");
+	send_message(PID_KCD, message_to_send);
+
+	if (get_process_priority(PID_P6) != LOW) {
+		tests_passing = 0;
+	}
+
+	// Release processor so PID_P1 blocks
+	release_processor();
+
+	// Send %C 1 1 to KCD
+	// Expected: Priority of PID_P1 should now be MEDIUM
+	// Should  change priority even though PID_P1 is in blocked on receive queue
+	message_to_send = (MSG_BUF*)request_memory_block();
+	message_to_send->mtype = DEFAULT;
+	strcpy(message_to_send->mtext, "%C 1 1");
+	send_message(PID_KCD, message_to_send);
+
+	if (get_process_priority(PID_P1) != MEDIUM) {
+		tests_passing = 0;
+	}
+
+	// Send test case result back to PID_P1
+    // If 0 -> test case failed
+    // If 1 -> test case passed
+	priority_command_tests_pass = tests_passing;
+
+	message_to_send = (MSG_BUF*)request_memory_block();
+	message_to_send->mtype = DEFAULT;
+	message_to_send->mtext[0] = 'S';
+	message_to_send->mtext[1] = '\0';
+	send_message(PID_P1, message_to_send);
+
+	// Request a message to block this process
+	// This avoids running into PID_P6 accidentally / anytime after running the priority tests
+	message_to_unblock = (MSG_BUF*)receive_message((int*)0);
+
+	// Theoretically should never get here, but just to be safe...
+	release_memory_block(message_to_unblock);
 }

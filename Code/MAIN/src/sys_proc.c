@@ -483,9 +483,9 @@ void UART_IPROC(void)
 			g_char_out = *gp_buffer;
 			pUart->THR = g_char_out;
 			gp_buffer++;
-			uart1_put_string("Printing a character to UART0...\r\n");
+			uart1_put_string(".");
 		}
-		
+		uart1_put_string("\r\n");
 		gp_buffer = g_buffer;	
 		k_release_memory_block((void*)received_message);	
 	}
