@@ -65,7 +65,7 @@ void set_priority_command_proc(void)
 		else {
 			msg_to_send = (MSG_BUF*)request_memory_block();
 			msg_to_send->mtype = CRT_DISPLAY;
-			strcpy(msg_to_send->mtext, "ERROR: Incorrect Input! Please ensure that the PID is between 1 and 13 and that the priority is between 0 and 3.\r\n");
+			strcpy(msg_to_send->mtext, "ERROR: Invalid input!\r\n");
 			send_message(PID_CRT, msg_to_send);
 		}
 		
@@ -166,7 +166,7 @@ void proc_wall_clock()
 					// Send a message to the CRT to display an error message
 					msg_to_send = (MSG_BUF*)request_memory_block();
 					msg_to_send->mtype = CRT_DISPLAY;
-					strcpy(msg_to_send->mtext, "ERROR: The input time was invalid!\r\n");
+					strcpy(msg_to_send->mtext, "ERROR: Invalid time!\r\n");
 					send_message(PID_CRT, msg_to_send);
 				}
 			}

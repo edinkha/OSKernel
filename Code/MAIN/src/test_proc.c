@@ -215,6 +215,8 @@ void user_test_runner(void)
 		uart1_put_string("G023_test: END\r\n");
 		
 		done_testing = 1;
+
+		set_process_priority(PID_P1, LOWEST);
 	}
 	while (1) {
 		release_processor();
