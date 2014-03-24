@@ -100,7 +100,7 @@ void KCD(void)
 			else {
 				message_to_send->mtext[1] = '\0';
 				
-				if (message_received->mtext[0] == '\b') { // The user pressed BACKSPACE
+				if (message_received->mtext[0] == '\b' || message_received->mtext[0] == 127) { // The user pressed BACKSPACE
 					if (idx_user_input > 0) {
 						// Subtract a character from the user input string
 						str_user_input[--idx_user_input] = '\0';
