@@ -179,7 +179,7 @@ PCB* scheduler(void)
 	
 	// if the priority queue is empty, execute the null process; otherwise, execute next highest priority process
 	if (next_pcb == NULL) {
-		return gp_pcbs[0];
+		return gp_pcbs[15];
 	}
 	else {
 		return next_pcb;
@@ -363,6 +363,7 @@ int k_set_process_priority(int pid, int priority)
 				return RTX_ERR;
 			}
 			push(ready_pq, (QNode*)pcb, priority);
+		default:
 			pcb->m_priority = priority;
 			k_release_processor();
 			__disable_irq();
