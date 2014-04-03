@@ -18,6 +18,7 @@
 #include "utils.h"
 #include "string.h"
 #include "forward_list.h"
+#include "i_proc.h"
 
 #ifdef DEBUG_0
 #include "printf.h"
@@ -77,6 +78,54 @@ void user_test_runner(void)
 	MSG_BUF* message_from_PID5;
 	MSG_BUF* message_from_PID6;
 	int sender_id;
+	
+	/* ===================================================
+	 * ================= Begin Benchmark =================
+	 * ===================================================
+	 */
+	int loops = 1000000;
+	uint32_t startTime, endTime;
+	uint32_t t_send_message = 0;
+	uint32_t t_receive_message = 0;
+	uint32_t t_request_memory = 0;
+	MSG_BUF* message_for_bench;
+	void* memblk_for_bench;
+	
+	while (loops--) {
+		/* Request memory block */
+		startTime = get_current_bench_time();
+		memblk_for_bench = request_memory_block();
+		endTime = get_current_bench_time();
+		t_request_memory += endTime - startTime;
+		
+		/* Send message */
+		message_for_bench = (MSG_BUF*)memblk_for_bench;
+		message_for_bench->mtype = DEFAULT;
+		startTime = get_current_bench_time();
+		send_message(PID_P1, message_for_bench); // Send message to self
+		endTime = get_current_bench_time();
+		t_send_message += endTime - startTime;
+		
+		/* Receive mmessage */
+		startTime = get_current_bench_time();
+		message_for_bench = (MSG_BUF*)receive_message(0);
+		endTime = get_current_bench_time();
+		t_receive_message += endTime - startTime;
+		
+		/* Cleanup */
+		release_memory_block(message_for_bench);
+	}
+	/* Output stats */
+	__disable_irq();
+	printf("Time for %d iterations of request_memory_block = %u\r\n", loops, t_request_memory);
+	printf("Time for %d iterations of send_message = %u\r\n", loops, t_send_message);
+	printf("Time for %d iterations of receive_message = %u\r\n", loops, t_receive_message);
+	__enable_irq();
+	
+	/* ===================================================
+	 * ================== End Benchmark ==================
+	 * ===================================================
+	 */
 	
 	while (!done_testing) {
 		// Print introductory test strings
