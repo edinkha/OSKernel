@@ -7,7 +7,7 @@
  */
 
 #ifdef DEBUG_SIM_TIME
-#define ONE_SECOND 1
+#define ONE_SECOND 30
 #else
 #define ONE_SECOND 1000
 #endif
@@ -85,7 +85,7 @@ void user_test_runner(void)
 	 * ================= Begin Benchmark =================
 	 * ===================================================
 	 */
-	const int NUM_LOOPS = 500000;
+	const int NUM_LOOPS = 1000000;
 	int loops = NUM_LOOPS;
 	uint32_t startTime, endTime;
 	uint32_t t_send_message = 0;
