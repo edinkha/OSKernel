@@ -25,6 +25,7 @@ extern PCB* gp_current_process;
 extern PCB* get_proc_by_pid(int pid);
 
 volatile uint32_t g_timer_count = 0; // increment every 1 ms
+volatile uint32_t g_bench_timer_count = 0;
 
 ForwardList* delayed_messages; // List of delayed messages
 PCB* timer_proc;
@@ -92,10 +93,16 @@ uint32_t timer_init(uint8_t n_timer)
 		        See Table 82 on pg110 in LPC17xx_UM
 		-----------------------------------------------------
 		*/
+		
 		pTimer = (LPC_TIM_TypeDef*) LPC_TIM0;
 		
 	}
-	else {   /* other timer not supported yet */
+	else if (n_timer == 1) {
+		
+		pTimer = (LPC_TIM_TypeDef*) LPC_TIM1;
+		
+	}
+	else {   /* other timers not supported */
 		return 1;
 	}
 	
@@ -121,12 +128,17 @@ uint32_t timer_init(uint8_t n_timer)
 	                     generate an interrupt.
 	   Reset on MR0: Reset TC if MR0 mathches it.
 	*/
-	pTimer->MCR = BIT(0) | BIT(1);
+ 	pTimer->MCR = BIT(0) | BIT(1); // MR0
 	
-	g_timer_count = 0;
-	
-	/* Step 4.4: CSMSIS enable timer0 IRQ */
-	NVIC_EnableIRQ(TIMER0_IRQn);
+	/* Step 4.4: CSMSIS enable timer IRQ */
+	if (n_timer == 0) {
+		g_timer_count = 0;
+		NVIC_EnableIRQ(TIMER0_IRQn);
+	}
+	else {
+		g_bench_timer_count = 0;
+		NVIC_EnableIRQ(TIMER1_IRQn);
+	}
 	
 	/* Step 4.5: Enable the TCR. See table 427 on pg494 of LPC17xx_UM. */
 	pTimer->TCR = 1;
@@ -140,6 +152,14 @@ uint32_t timer_init(uint8_t n_timer)
 uint32_t get_current_time(void)
 {
 	return g_timer_count;
+}
+
+/**
+ * Simply returns the benchmark time
+ */
+uint32_t get_current_bench_time(void)
+{
+	return g_bench_timer_count;
 }
 
 /**
@@ -222,6 +242,29 @@ void timer_i_process()
 		MSG_ENVELOPE* envelope = (MSG_ENVELOPE*)pop_front(delayed_messages);
 		k_send_message(envelope->destination_pid, envelope);
 	}
+}
+
+__asm void TIMER1_IRQHandler(void)
+{
+	CPSID i ; disable interrupts
+	PRESERVE8
+	IMPORT c_TIMER1_IRQHandler
+	PUSH {r4-r11, lr}
+  BL c_TIMER1_IRQHandler
+	LDR R4, = __cpp(&g_bench_timer_count)
+	LDR R5, [R4]
+	ADD R5, #1
+	STR R5, [R4]
+	CPSIE i ; enable interrupts
+	POP {r4-r11, pc}
+}
+
+/**
+ * @brief C TIMER1 IRQ Handler
+ */
+void c_TIMER1_IRQHandler(void)
+{
+	LPC_TIM1->IR = BIT(0); // acknowledge interrupt
 }
 
 /**
