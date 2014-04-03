@@ -7,11 +7,13 @@
  */
 
 #ifdef DEBUG_SIM_TIME
-#define ONE_SECOND 30
+#define ONE_SECOND 1
 #else
 #define ONE_SECOND 1000
 #endif
 
+#include <LPC17xx.h>
+#include "uart.h"
 #include "rtx.h"
 #include "uart_polling.h"
 #include "test_proc.h"
@@ -83,13 +85,16 @@ void user_test_runner(void)
 	 * ================= Begin Benchmark =================
 	 * ===================================================
 	 */
-	int loops = 1000000;
+	const int NUM_LOOPS = 500000;
+	int loops = NUM_LOOPS;
 	uint32_t startTime, endTime;
 	uint32_t t_send_message = 0;
 	uint32_t t_receive_message = 0;
 	uint32_t t_request_memory = 0;
 	MSG_BUF* message_for_bench;
 	void* memblk_for_bench;
+	
+	NVIC_EnableIRQ(TIMER1_IRQn);
 	
 	while (loops--) {
 		/* Request memory block */
@@ -115,11 +120,14 @@ void user_test_runner(void)
 		/* Cleanup */
 		release_memory_block(message_for_bench);
 	}
+	
+	NVIC_DisableIRQ(TIMER1_IRQn);
+	
 	/* Output stats */
 	__disable_irq();
-	printf("Time for %d iterations of request_memory_block = %u\r\n", loops, t_request_memory);
-	printf("Time for %d iterations of send_message = %u\r\n", loops, t_send_message);
-	printf("Time for %d iterations of receive_message = %u\r\n", loops, t_receive_message);
+	printf("Time for %d iterations of request_memory_block = %u\r\n", NUM_LOOPS, t_request_memory);
+	printf("Time for %d iterations of send_message = %u\r\n", NUM_LOOPS, t_send_message);
+	printf("Time for %d iterations of receive_message = %u\r\n", NUM_LOOPS, t_receive_message);
 	__enable_irq();
 	
 	/* ===================================================

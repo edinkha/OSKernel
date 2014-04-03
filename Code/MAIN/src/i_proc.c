@@ -121,24 +121,14 @@ uint32_t timer_init(uint8_t n_timer)
 	pTimer->PR = 12499;
 	
 	/* Step 4.2: MR setting, see section 21.6.7 on pg496 of LPC17xx_UM. */
-	if (n_timer == 0) {
-		pTimer->MR0 = 1;
-	}
-	else {
-		pTimer->MR1 = 1;
-	}
+	pTimer->MR0 = 1;
 	
 	/* Step 4.3: MCR setting, see table 429 on pg496 of LPC17xx_UM.
 	   Interrupt on MR0: when MR0 mathches the value in the TC,
 	                     generate an interrupt.
 	   Reset on MR0: Reset TC if MR0 mathches it.
 	*/
-	if (n_timer == 0) {
-		pTimer->MCR = BIT(0) | BIT(1); // MR0
-	}
-	else {
-		pTimer->MCR = BIT(3) | BIT(4); // MR1
-	}
+ 	pTimer->MCR = BIT(0) | BIT(1); // MR0
 	
 	/* Step 4.4: CSMSIS enable timer IRQ */
 	if (n_timer == 0) {
@@ -258,13 +248,23 @@ __asm void TIMER1_IRQHandler(void)
 {
 	CPSID i ; disable interrupts
 	PRESERVE8
+	IMPORT c_TIMER1_IRQHandler
 	PUSH {r4-r11, lr}
+  BL c_TIMER1_IRQHandler
 	LDR R4, = __cpp(&g_bench_timer_count)
 	LDR R5, [R4]
 	ADD R5, #1
 	STR R5, [R4]
 	CPSIE i ; enable interrupts
 	POP {r4-r11, pc}
+}
+
+/**
+ * @brief C TIMER1 IRQ Handler
+ */
+void c_TIMER1_IRQHandler(void)
+{
+	LPC_TIM1->IR = BIT(0); // acknowledge interrupt
 }
 
 /**
